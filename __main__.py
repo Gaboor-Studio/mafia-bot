@@ -57,5 +57,4 @@ def start(update: telegram.Update):
 
 dispatcher = updater.dispatcher
 dispatcher.add_handler(CommandHandler("new", new_game))
-dispatcher.add_handler(CommandHandler("start", start))
 updater.start_polling()
