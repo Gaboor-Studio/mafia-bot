@@ -57,10 +57,7 @@ def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
 games = []
 dispatcher = updater.dispatcher
 dispatcher.add_handler(CommandHandler("new", new_game))
-<<<<<<< HEAD
-=======
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler('join', join))
 dispatcher.add_handler(CommandHandler('leave', leave))
->>>>>>> Orginize code and handle playing in different groups
 updater.start_polling()
