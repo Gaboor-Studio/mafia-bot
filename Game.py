@@ -8,21 +8,16 @@ class Game:
         self.group_chat_id=group_chat_id
 
     def join_game(self, user_info: telegram.User, update: telegram.Update):
-        print(1)
         is_in_the_game = False
         for player in self.players:
             if player.user_name == user_info['username']:
                 is_in_the_game = True
-        print(2)
         if not is_in_the_game:
             player = Player(user_info['first_name'], user_info['username'])
-            print(3)
             self.players.append(player)
             players_list = ""
-            print(4)
             for player in self.players:
                 players_list += '@' + player.user_name + '\n'
-            print(5)
             update.message.reply_text(players_list)
 
         else:
