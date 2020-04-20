@@ -1,11 +1,13 @@
 import telegram
+import random
 from Player import Player
+
 
 class Game:
 
-    def __init__(self,group_chat_id):
+    def __init__(self, group_chat_id):
         self.players = []
-        self.group_chat_id=group_chat_id
+        self.group_chat_id = group_chat_id
 
     def join_game(self, user_info: telegram.User, update: telegram.Update):
         is_in_the_game = False
@@ -23,7 +25,6 @@ class Game:
         else:
             update.message.reply_text('@' + user_info['username'] + " has already joined the game")
 
-
     def leave_game(self, user_info: telegram.User, update: telegram.Update):
         is_in_the_game = False
         for player in self.players:
@@ -33,3 +34,21 @@ class Game:
                 update.message.reply_text('@' + player.user_name + " successfully left the game")
         if not is_in_the_game:
             update.message.reply_text("You have not joined the game")
+
+    def start_game(self):
+        for i in range(int(len(self.players) / 3)):
+            while True:
+                r = random.randrange(0, len(self.players), 1)
+                if self.players[r].rule == "citizen":
+                    self.players[r].rule = "mafia"
+                    break
+        while True:
+            r = random.randrange(0, len(self.players), 1)
+            if self.players[r].rule == "citizen":
+                self.players[r].rule = "police"
+                break
+        while True:
+            r = random.randrange(0, len(self.players), 1)
+            if self.players[r].rule == "citizen":
+                self.players[r].rule = "doctor"
+                break
