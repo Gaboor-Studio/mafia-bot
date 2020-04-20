@@ -71,7 +71,7 @@ def start_game(context: telegram.ext.CallbackContext):
             break
 
 
-def end_game(update: telegram.Update):
+def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     global games
     group_id = update.effective_chat.id
     has_active_game = False
@@ -81,8 +81,9 @@ def end_game(update: telegram.Update):
             update.message.reply_text("Game has been ended")
             games.remove(game)
             break
-    if has_active_game==False:
+    if has_active_game == False:
         update.message.reply_text("There is no game in this group!")
+
 
 games = []
 dispatcher = updater.dispatcher
