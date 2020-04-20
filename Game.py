@@ -15,7 +15,7 @@ class Game:
             if player.user_name == user_info['username']:
                 is_in_the_game = True
         if not is_in_the_game:
-            player = Player(user_info['first_name'], user_info['username'])
+            player = Player(user_info['first_name'], user_info['username'], user_info['id'])
             self.players.append(player)
             players_list = ""
             for player in self.players:
