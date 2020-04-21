@@ -2,8 +2,10 @@ import telegram
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from Game import Game
+import requests
 
-updater = Updater(token='1292704420:AAF_EyffRm1uwKCwuZ8n6okijs1BY60S128', use_context=True)
+TOKEN = '1292704420:AAF_EyffRm1uwKCwuZ8n6okijs1BY60S128'
+updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot('1292704420:AAF_EyffRm1uwKCwuZ8n6okijs1BY60S128')
 
 
@@ -34,7 +36,7 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     if "active_game" not in group_data.keys():
         game = Game(group_id)
         group_data["active_game"] = game
-        context.job_queue.run_once(game.start_game, 5, context=(update.message.chat_id, context.chat_data))
+        context.job_queue.run_once(game.start_game, 30, context=(update.message.chat_id, context.chat_data))
         update.message.reply_text("New game started")
     else:
         update.message.reply_text("This group has an unfinished game!")
@@ -43,7 +45,7 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 @just_for_pv
 def start(update: telegram.Update, context: telegram.ext.CallbackContext):
     update.message.reply_text("Hi!")
-    context.user_data["has_subscribed"] = True
+    id = update.message.from_user['id']
 
 
 @just_for_group
@@ -52,14 +54,16 @@ def join(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_data = context.chat_data
     user_data = context.user_data
     if "active_game" in group_data.keys():
-        if "has_subscribed" in user_data.keys():
-            if user_data["has_subscribed"]:
-                group_game = group_data["active_game"]
-                group_game.join_game(user, user_data, update)
-            else:
-                update.message.reply_text("You have not started me in private chat.Please start me and try again.")
+        URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        PARAMS = {'chat_id': user['id'],
+                  'text': f"Analyzing your requst to join the mafia game in group {update.effective_chat['title']}"}
+        r = requests.get(url=URL, params=PARAMS)
+        has_subscribed = r.json()['ok']
+        if (has_subscribed):
+            group_game = group_data["active_game"]
+            group_game.join_game(user, user_data, update, context)
         else:
-            update.message.reply_text("You have not started me in private chat.Please start me and try again.")
+            update.message.reply_text("Please start the bot in private chat and try again!")
     else:
         update.message.reply_text("There is no game in this group!")
 
@@ -74,6 +78,7 @@ def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
         group_game.leave_game(user, user_data, update)
     else:
         update.message.reply_text("There is no game in this group!")
+
 
 @just_for_group
 def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
