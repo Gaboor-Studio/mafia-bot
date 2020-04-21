@@ -2,20 +2,21 @@ import telegram
 import random
 from Player import Player
 from telegram.ext import CommandHandler
-import time
 
 
 class Game:
 
-    def __init__(self, group_chat_id):
+    def __init__(self, group_chat_id, group_data):
         self.players = []
         self.group_chat_id = group_chat_id
+        self.group_data = group_data
+        self.is_started = False
 
     def join_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data,
                   update: telegram.Update, context: telegram.ext.CallbackContext):
         if "active_game" not in user_data.keys():
             user_data["active_game"] = self
-            player = Player(user['first_name'], user['username'], user['id'])
+            player = Player(user['first_name'], user['username'], user['id'], user_data)
             self.players.append(player)
             update.message.reply_text(self.get_list())
             context.bot.send_message(chat_id=user['id'], text="You joined the game successfully")
@@ -71,21 +72,31 @@ class Game:
         return None
 
     def start_game(self, context: telegram.ext.CallbackContext):
-        group_data = context.job.context[1]
+        group_data = self.group_data
         if "active_game" in group_data.keys():
             game = group_data["active_game"]
             if len(game.players) > 3:
                 game.init()
                 for player in game.players:
                     context.bot.send_message(chat_id=player.user_id, text=player.rule)
-                context.bot.send_message(chat_id=context.job.context[0], text='Game has been started!')
-                for player in game.players:
+                context.bot.send_message(chat_id=self.group_chat_id, text='Game has been started!')
+                self.is_started = True
+                for player in game.players:  # need to add this line to playturn method later
                     player.talk(self.group_chat_id, context)
             else:
-                context.bot.send_message(chat_id=context.job.context[0], text='Game is canceled because there is not '
-                                                                              'enough players. Invite your friends to'
-                                                                              ' join.')
-                del group_data["active_game"]
+                context.bot.send_message(chat_id=self.group_chat_id, text='Game is canceled because there is not '
+                                                                          'enough players. Invite your friends to'
+                                                                          ' join.')
+                self.delete_game(context)
 
         else:
-            context.bot.send_message(chat_id=context.job.context[0], text='There is no game in this group!')
+            context.bot.send_message(chat_id=self.group_chat_id, text='There is no game in this group!')
+
+    def delete_game(self, context: telegram.ext.CallbackContext):
+        if not self.is_started:
+            for job in context.job_queue._queue.queue:
+                if job[1].name == self.group_chat_id:
+                    context.job_queue._queue.queue.remove(job)
+        for player in self.players:
+            del player.user_data["active_game"]
+        del self.group_data["active_game"]

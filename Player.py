@@ -4,11 +4,12 @@ import time
 
 
 class Player:
-    def __init__(self, name, user_name, user_id):
+    def __init__(self, name, user_name, user_id, user_data):
         self.rule = "citizen"
         self.name = name
         self.user_name = user_name
         self.user_id = user_id
+        self.user_data = user_data
 
     def talk(self, group_chat_id, context: telegram.ext.CallbackContext):
         context.bot.send_message(chat_id=group_chat_id,

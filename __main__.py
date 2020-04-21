@@ -4,9 +4,11 @@ from telegram.ext import CommandHandler
 from Game import Game
 import requests
 
-TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
+# 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
+TOKEN = '1292704420:AAF_EyffRm1uwKCwuZ8n6okijs1BY60S128'
+# TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
-bot = telegram.Bot('1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4')
+bot = telegram.Bot(TOKEN)
 
 
 def just_for_group(func):
@@ -34,9 +36,10 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_id = update.effective_chat.id
     group_data = context.chat_data
     if "active_game" not in group_data.keys():
-        game = Game(group_id)
+        game = Game(group_id, group_data)
         group_data["active_game"] = game
-        context.job_queue.run_once(game.start_game, 50, context=(update.message.chat_id, context.chat_data))
+        context.job_queue.run_once(game.start_game, 10, context=(update.message.chat_id, context.chat_data),
+                                   name=group_id)
         update.message.reply_text("New game started")
 
     else:
@@ -46,7 +49,6 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 @just_for_pv
 def start(update: telegram.Update, context: telegram.ext.CallbackContext):
     update.message.reply_text("Hi!")
-    id = update.message.from_user['id']
 
 
 @just_for_group
@@ -55,12 +57,12 @@ def join(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_data = context.chat_data
     user_data = context.user_data
     if "active_game" in group_data.keys():
-        URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-        PARAMS = {'chat_id': user['id'],
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        params = {'chat_id': user['id'],
                   'text': f"Analyzing your request to join the mafia game in group {update.effective_chat['title']}"}
-        r = requests.get(url=URL, params=PARAMS)
+        r = requests.get(url=url, params=params)
         has_subscribed = r.json()['ok']
-        if (has_subscribed):
+        if has_subscribed:
             group_game = group_data["active_game"]
             group_game.join_game(user, user_data, update, context)
         else:
@@ -85,8 +87,8 @@ def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
 def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_data = context.chat_data
     if "active_game" in group_data.keys():
+        group_data["active_game"].delete_game(context)
         update.message.reply_text("Game ended")
-        del group_data["active_game"]
     else:
         update.message.reply_text("There is no game in this group!")
 
