@@ -35,7 +35,7 @@ class Game:
         else:
             update.message.reply_text("You have not joined a game yet!")
 
-    def start_game(self):
+    def init(self):
         for i in range(int(len(self.players) / 3)):
             while True:
                 r = random.randrange(0, len(self.players), 1)
@@ -64,3 +64,14 @@ class Game:
             if player.user_name == user["username"]:
                 return player
         return None
+
+    def start_game(self,context: telegram.ext.CallbackContext):
+        group_data = context.job.context[1]
+        if "active_game" in group_data.keys():
+            game = group_data["active_game"]
+            game.init()
+            for player in game.players:
+                context.bot.send_message(chat_id=player.user_id, text=player.rule)
+            context.bot.send_message(chat_id=context.job.context[0], text='Game has been started!')
+        else:
+            context.bot.send_message(chat_id=context.job.context[0], text='There is no game in this group!')
