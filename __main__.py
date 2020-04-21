@@ -10,9 +10,19 @@ TOKEN = '1292704420:AAF_EyffRm1uwKCwuZ8n6okijs1BY60S128'
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
 
+def admin_permission(func):
+    def wrapper_func(update, context):
+        group_id = update.effective_chat.id
+        user_id = update.message.from_user['id']
+        role = context.bot.get_chat_member(group_id, user_id).status
+        if role=='creator' or role=='administrator':
+            func(update,context)
+        else:
+            update.message.reply_text("You dont have admin permission to run this command!")
+    return wrapper_func
 
 def just_for_group(func):
-    def wrapper_func(update, context=None):
+    def wrapper_func(update, context):
         if update.effective_chat.id == update.message.from_user["id"]:
             update.message.reply_text("This command is just for groups!")
         else:
@@ -22,7 +32,7 @@ def just_for_group(func):
 
 
 def just_for_pv(func):
-    def wrapper_func(update, context=None):
+    def wrapper_func(update, context):
         if update.effective_chat.id != update.message.from_user["id"]:
             update.message.reply_text("This command is just for private chat!")
         else:
@@ -38,7 +48,7 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     if "active_game" not in group_data.keys():
         game = Game(group_id, group_data)
         group_data["active_game"] = game
-        context.job_queue.run_once(game.start_game, 10, context=(update.message.chat_id, context.chat_data),
+        context.job_queue.run_once(game.start_game, 60, context=(update.message.chat_id, context.chat_data),
                                    name=group_id)
         update.message.reply_text("New game started")
 
@@ -82,7 +92,7 @@ def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
     else:
         update.message.reply_text("There is no game in this group!")
 
-
+@admin_permission
 @just_for_group
 def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_data = context.chat_data
