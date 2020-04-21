@@ -1,6 +1,8 @@
 import telegram
 import random
 from Player import Player
+from telegram.ext import CommandHandler
+import time
 
 
 class Game:
@@ -72,9 +74,27 @@ class Game:
         group_data = context.job.context[1]
         if "active_game" in group_data.keys():
             game = group_data["active_game"]
-            game.init()
+            if len(game.players) > 3:
+                game.init()
+                for player in game.players:
+                    context.bot.send_message(chat_id=player.user_id, text=player.rule)
+                context.bot.send_message(chat_id=context.job.context[0], text='Game has been started!')
+                self.talk()
+            else:
+                context.bot.send_message(chat_id=context.job.context[0], text='Game is canceled because there is not '
+                                                                              'enough players. Invite your friends to'
+                                                                              ' join.')
+                del group_data["active_game"]
+
+        else:
+            context.bot.send_message(chat_id=context.job.context[0], text='There is no game in this group!')
+
+    def talk(self, context: telegram.ext.CallbackContext):
+        group_data = context.job.context[1]
+        if "active_game" in group_data.keys():
+            game = group_data["active_game"]
             for player in game.players:
-                context.bot.send_message(chat_id=player.user_id, text=player.rule)
-            context.bot.send_message(chat_id=context.job.context[0], text='Game has been started!')
+                time.sleep(45)
+                context.bot.send_message(chat_id=context.job.context[0], text='@' + player.user_name + " turn to talk")
         else:
             context.bot.send_message(chat_id=context.job.context[0], text='There is no game in this group!')
