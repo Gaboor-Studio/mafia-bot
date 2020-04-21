@@ -79,22 +79,13 @@ class Game:
                 for player in game.players:
                     context.bot.send_message(chat_id=player.user_id, text=player.rule)
                 context.bot.send_message(chat_id=context.job.context[0], text='Game has been started!')
-                self.talk()
+                for player in game.players:
+                    player.talk(self.group_chat_id, context)
             else:
                 context.bot.send_message(chat_id=context.job.context[0], text='Game is canceled because there is not '
                                                                               'enough players. Invite your friends to'
                                                                               ' join.')
                 del group_data["active_game"]
 
-        else:
-            context.bot.send_message(chat_id=context.job.context[0], text='There is no game in this group!')
-
-    def talk(self, context: telegram.ext.CallbackContext):
-        group_data = context.job.context[1]
-        if "active_game" in group_data.keys():
-            game = group_data["active_game"]
-            for player in game.players:
-                time.sleep(45)
-                context.bot.send_message(chat_id=context.job.context[0], text='@' + player.user_name + " turn to talk")
         else:
             context.bot.send_message(chat_id=context.job.context[0], text='There is no game in this group!')

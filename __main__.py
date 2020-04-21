@@ -4,9 +4,9 @@ from telegram.ext import CommandHandler
 from Game import Game
 import requests
 
-TOKEN = '1292704420:AAF_EyffRm1uwKCwuZ8n6okijs1BY60S128'
+TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
-bot = telegram.Bot('1292704420:AAF_EyffRm1uwKCwuZ8n6okijs1BY60S128')
+bot = telegram.Bot('1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4')
 
 
 def just_for_group(func):
@@ -36,8 +36,9 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     if "active_game" not in group_data.keys():
         game = Game(group_id)
         group_data["active_game"] = game
-        context.job_queue.run_once(game.start_game, 30, context=(update.message.chat_id, context.chat_data))
+        context.job_queue.run_once(game.start_game, 50, context=(update.message.chat_id, context.chat_data))
         update.message.reply_text("New game started")
+
     else:
         update.message.reply_text("This group has an unfinished game!")
 
@@ -56,7 +57,7 @@ def join(update: telegram.Update, context: telegram.ext.CallbackContext):
     if "active_game" in group_data.keys():
         URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         PARAMS = {'chat_id': user['id'],
-                  'text': f"Analyzing your requst to join the mafia game in group {update.effective_chat['title']}"}
+                  'text': f"Analyzing your request to join the mafia game in group {update.effective_chat['title']}"}
         r = requests.get(url=URL, params=PARAMS)
         has_subscribed = r.json()['ok']
         if (has_subscribed):
