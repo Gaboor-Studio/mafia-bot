@@ -1,6 +1,5 @@
 import telegram
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
-from Poll import Poll
 from Game import Game
 import requests
 
@@ -107,12 +106,15 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
         update.message.reply_text("There is no game in this group!")
 
 
-def button(update, context):
+def button(update: telegram.Update, context):
     query = update.callback_query
     game = context.user_data["active_game"]
     query.answer()
-    game.votes.append(query.data)
-    query.edit_message_text(text=f"Your choosed: @{query.data}")
+    list_vote = game.votes.get('@' + query.from_user['username'])
+    vote = query.data
+    query.edit_message_text(text=f"Your choice: @{vote}")
+    list_vote.append(vote)
+    game.votes.update({'@' + query.from_user['username']: list_vote})
 
 
 dispatcher = updater.dispatcher

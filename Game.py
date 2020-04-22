@@ -1,14 +1,14 @@
 import telegram
 import random
 from Player import Player
-from telegram.ext import CommandHandler
+from telegram.ext import Updater
 from Poll import Poll
 
 
 class Game:
 
     def __init__(self, group_chat_id, group_data):
-        self.votes = []
+        self.votes = {}
         self.players = []
         self.group_chat_id = group_chat_id
         self.group_data = group_data
@@ -22,6 +22,8 @@ class Game:
             self.players.append(player)
             update.message.reply_text(self.get_list())
             context.bot.send_message(chat_id=user['id'], text="You joined the game successfully")
+            arrlist = []
+            self.votes.update({'@' + player.user_name: arrlist})
         else:
             if user_data["active_game"] == self:
                 update.message.reply_text('@' + user['username'] + " has already joined the game!")
@@ -36,6 +38,7 @@ class Game:
             if user_data["active_game"] == self:
                 del user_data["active_game"]
                 player = self.get_player_by_user(user)
+                del self.votes['@' + player.user_name]
                 self.players.remove(player)
                 update.message.reply_text('@' + player.user_name + " successfully left the game!")
             else:
@@ -109,11 +112,7 @@ class Game:
                     context.bot.send_message(chat_id=player.user_id, text=player.rule)
                 context.bot.send_message(chat_id=self.group_chat_id, text='Game has been started!')
                 self.is_started = True
-                for player in game.players:  # need to add this line to playturn method later
-                    player.talk(self.group_chat_id, context)
-                    poll = Poll("hi", game.players, player)
-                    poll.send_poll(context)
-
+                self.day(context)
             else:
                 context.bot.send_message(chat_id=self.group_chat_id, text='Game is canceled because there is not '
                                                                           'enough players. Invite your friends to'
@@ -131,3 +130,33 @@ class Game:
         for player in self.players:
             del player.user_data["active_game"]
         del self.group_data["active_game"]
+
+    def show_result(self, context: telegram.ext.CallbackContext):
+        dead = {}
+        for i in self.votes:
+            v = ""
+            k = 0
+            for j in self.votes.get(i):
+                v = v + j + " and "
+                k = k + 1
+            dead.update({i: k})
+            context.bot.send_message(chat_id=self.group_chat_id, text=i + ' voted to' + v)
+        kill = ""
+        kill_num = 0
+        for i in dead.keys():
+            if dead.get(i) > kill_num:
+                kill = i
+                kill_num = dead.get(i)
+        context.bot.send_message(chat_id=self.group_chat_id, text=kill + " died")
+        kill.replace('@', '')
+        self.players.remove(self.get_player_by_user_name(kill))
+        del self.votes['@' + kill]
+
+    def day(self, context: telegram.ext.CallbackContext):
+        for player in self.players:
+            player.talk(self.group_chat_id, context)
+        for player in self.players:
+            poll = Poll("hi", self.players, player)
+            poll.send_poll(context)
+        context.bot.send_message(chat_id=self.group_chat_id, text="30 seconds left to voting")
+        context.job_queue.run_once(self.show_result, 30, context)
