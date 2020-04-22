@@ -13,6 +13,7 @@ class Game:
         self.group_chat_id = group_chat_id
         self.group_data = group_data
         self.is_started = False
+        self.state="day";
 
     def join_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data,
                   update: telegram.Update, context: telegram.ext.CallbackContext):
@@ -131,32 +132,88 @@ class Game:
             del player.user_data["active_game"]
         del self.group_data["active_game"]
 
-    def show_result(self, context: telegram.ext.CallbackContext):
-        dead = {}
-        for i in self.votes:
-            v = ""
-            k = 0
-            for j in self.votes.get(i):
-                v = v + j + " and "
-                k = k + 1
-            dead.update({i: k})
-            context.bot.send_message(chat_id=self.group_chat_id, text=i + ' voted to' + v)
-        kill = ""
-        kill_num = 0
-        for i in dead.keys():
-            if dead.get(i) > kill_num:
-                kill = i
-                kill_num = dead.get(i)
-        context.bot.send_message(chat_id=self.group_chat_id, text=kill + " died")
-        kill.replace('@', '')
-        self.players.remove(self.get_player_by_user_name(kill))
-        del self.votes['@' + kill]
+    # def show_result(self, context: telegram.ext.CallbackContext):
+    #     dead = {}
+    #     for player, votes in self.votes:
+    #         votes_list = ""
+    #         votes_count = 0
+    #         for username in votes:
+    #             votes_list += username + " and "
+    #             votes_count += 1
+    #         dead.update({player: votes_count})
+    #         context.bot.send_message(chat_id=self.group_chat_id, text=player + ' voted to' + votes_list)
+    #     kill = ""
+    #     kill_num = 0
+    #     number_of_voters={}
+    #     for player in self.get_alive_players():
+    #         number_of_voters.update({player.user_name : 0})
+    #     for votes in dead.values():
+    #         if dead.get(player) > kill_num:
+    #             kill = player
+    #             kill_num = dead.get(player)
+    #     context.bot.send_message(chat_id=self.group_chat_id, text=kill + " died")
+    #     kill.replace('@', '')
+    #     dead_player = self.get_player_by_user_name(kill)
+    #     dead_player.is_alive = False
+    #     del self.votes['@' + kill]
 
     def day(self, context: telegram.ext.CallbackContext):
-        for player in self.players:
+        self.state = "day"
+        for player in self.get_alive_players():
             player.talk(self.group_chat_id, context)
-        for player in self.players:
-            poll = Poll("hi", self.players, player)
+        for player in self.get_alive_players():
+            poll = Poll("Who do you want to kill?", self.other_players(player), player)
             poll.send_poll(context)
-        context.bot.send_message(chat_id=self.group_chat_id, text="30 seconds left to voting")
+        context.bot.send_message(chat_id=self.group_chat_id, text="30 seconds left until the end of voting")
         context.job_queue.run_once(self.show_result, 30, context)
+
+    def get_mafia_number(self):
+        counter = 0
+        for player in self.get_alive_players():
+            if (player.rule == 'mafia'):
+                counter = counter + 1
+        return counter
+
+    def mafia_list(self, context):
+        mafias_list = ""
+        founded_mafias = 0
+        for player in self.players:
+            if (player.rule == 'mafia'):
+                founded_mafias += 1
+                if (founded_mafias != self.get_mafia_number()):
+                    mafias_list += "@" + player.user_name + " and "
+                if (founded_mafias == self.get_mafia_number()):
+                    mafias_list += "@" + player.user_name
+        message = ""
+        if (self.get_mafia_number() == 1):
+            message = "You are the only mafia of the game. good luck :)"
+        if (self.get_mafia_number() > 1):
+            message = "Your mafia team is " + mafias_list + "good luck :)"
+        return message
+
+    def mafia_want(self):
+        targets = []
+        for player in self.get_alive_players():
+            if (player.rule != 'mafia'):
+                targets.append(player)
+        return targets
+
+    def other_players(self, player):
+        players = []
+        for p in self.get_alive_players():
+            if (p.rule != player.rule):
+                players.append(player)
+        return players
+
+    def night(self, context: telegram.ext.CallbackContext):
+        self.state = "night"
+        for player in self.players:
+            if (player.rule == 'police'):
+                poll = Poll("who do you doubt🕵️?", self.other_players(player), player)
+                poll.send_poll(context)
+            if (player.rule == 'doctor'):
+                poll = Poll("who do you want to save👨‍", self.get_alive_players(), player)
+                poll.send_poll(context)
+            if (player.rule == 'mafia'):
+                poll = Poll("who do you want to kill😈", self.mafia_want(), player)
+                poll.send_poll(context)
