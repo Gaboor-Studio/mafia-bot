@@ -1,25 +1,28 @@
 import telegram
-from telegram.ext import Updater, CommandHandler,CallbackQueryHandler
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from Poll import Poll
 from Game import Game
 import requests
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
-TOKEN = '1292704420:AAF_EyffRm1uwKCwuZ8n6okijs1BY60S128'
+TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 # TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
+
 
 def admin_permission(func):
     def wrapper_func(update, context):
         group_id = update.effective_chat.id
         user_id = update.message.from_user['id']
         role = context.bot.get_chat_member(group_id, user_id).status
-        if role=='creator' or role=='administrator':
-            func(update,context)
+        if role == 'creator' or role == 'administrator':
+            func(update, context)
         else:
             update.message.reply_text("You dont have admin permission to run this command!")
+
     return wrapper_func
+
 
 def just_for_group(func):
     def wrapper_func(update, context):
@@ -92,6 +95,7 @@ def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
     else:
         update.message.reply_text("There is no game in this group!")
 
+
 @admin_permission
 @just_for_group
 def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
@@ -102,12 +106,13 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     else:
         update.message.reply_text("There is no game in this group!")
 
+
 def button(update, context):
     query = update.callback_query
     game = context.user_data["active_game"]
     query.answer()
     game.votes.append(query.data)
-    query.edit_message_text(text=f"Your choosed: @{query.data.user_name}")
+    query.edit_message_text(text=f"Your choosed: @{query.data}")
 
 
 dispatcher = updater.dispatcher

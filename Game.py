@@ -2,12 +2,13 @@ import telegram
 import random
 from Player import Player
 from telegram.ext import CommandHandler
+from Poll import Poll
 
 
 class Game:
 
     def __init__(self, group_chat_id, group_data):
-        self.votes=[]
+        self.votes = []
         self.players = []
         self.group_chat_id = group_chat_id
         self.group_data = group_data
@@ -102,7 +103,7 @@ class Game:
         group_data = self.group_data
         if "active_game" in group_data.keys():
             game = group_data["active_game"]
-            if len(game.players) > 3:
+            if len(game.players) > 2:
                 game.init()
                 for player in game.players:
                     context.bot.send_message(chat_id=player.user_id, text=player.rule)
@@ -110,6 +111,9 @@ class Game:
                 self.is_started = True
                 for player in game.players:  # need to add this line to playturn method later
                     player.talk(self.group_chat_id, context)
+                    poll = Poll("hi", game.players, player)
+                    poll.send_poll(context)
+
             else:
                 context.bot.send_message(chat_id=self.group_chat_id, text='Game is canceled because there is not '
                                                                           'enough players. Invite your friends to'

@@ -1,5 +1,6 @@
 import telegram
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import CommandHandler
 
 
 class Poll:
@@ -9,7 +10,7 @@ class Poll:
         self.alive_players_list = alive_players_list
         self.title = title
         self.keyboard = []
-        self.init_keyboard(self.asked_player)
+        self.init_keyboard()
 
     def send_poll(self, context: telegram.ext.CallbackContext):
         context.bot.send_message(chat_id=self.asked_player.user_id, text='You want to kill:',
@@ -22,13 +23,12 @@ class Poll:
         self.reply_markup = None
 
     def set_asked_player(self, asked_player):
-        self.asked_player = asked_player;
+        self.asked_player = asked_player
 
-    def set_title(self, asked_player):
-        self.asked_player = asked_player;
+    def set_title(self, title):
+        self.title = title
 
-    def init_keyboard(self, asked_player):
+    def init_keyboard(self):
         for player in self.alive_players_list:
-            if player != self.asked_player:
-                self.keyboard.append(InlineKeyboardButton('@'+player.user_name, callback_data=player))
-        self.reply_markup = InlineKeyboardMarkup(self.keyboard)
+            self.keyboard.append([InlineKeyboardButton('@'+player.user_name, callback_data=player.user_name)])
+            self.reply_markup = InlineKeyboardMarkup(self.keyboard)
