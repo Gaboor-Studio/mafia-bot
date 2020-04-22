@@ -7,6 +7,7 @@ from telegram.ext import CommandHandler
 class Game:
 
     def __init__(self, group_chat_id, group_data):
+        self.votes=[]
         self.players = []
         self.group_chat_id = group_chat_id
         self.group_data = group_data
@@ -33,7 +34,7 @@ class Game:
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
                 del user_data["active_game"]
-                player = self.get_player(user)
+                player = self.get_player_by_user(user)
                 self.players.remove(player)
                 update.message.reply_text('@' + player.user_name + " successfully left the game!")
             else:
@@ -65,11 +66,37 @@ class Game:
             players_list += '@' + player.user_name + '\n'
         return players_list
 
-    def get_player(self, user: telegram.User):
+    def get_player_by_user(self, user: telegram.User):
         for player in self.players:
             if player.user_name == user["username"]:
                 return player
         return None
+
+    def get_player_by_id(self, id: str):
+        for player in self.players:
+            if player.user_id == id:
+                return player
+        return None
+
+    def get_player_by_user_name(self, user_name: str):
+        for player in self.players:
+            if player.user_name == user_name:
+                return player
+        return None
+
+    def get_alive_players(self):
+        list = []
+        for player in self.players:
+            if player.is_alive:
+                list.append(player)
+        return list
+
+    def get_dead_players(self):
+        list = []
+        for player in self.players:
+            if not player.is_alive:
+                list.append(player)
+        return list
 
     def start_game(self, context: telegram.ext.CallbackContext):
         group_data = self.group_data
