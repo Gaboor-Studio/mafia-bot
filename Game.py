@@ -3,6 +3,7 @@ import random
 from Player import Player
 from telegram.ext import Updater
 from Poll import Poll
+import time
 
 
 class Game:
@@ -13,7 +14,7 @@ class Game:
         self.group_chat_id = group_chat_id
         self.group_data = group_data
         self.is_started = False
-        self.state = "day";
+        self.state = "day"
 
     def join_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data,
                   update: telegram.Update, context: telegram.ext.CallbackContext):
@@ -84,6 +85,7 @@ class Game:
         return None
 
     def get_player_by_user_name(self, user_name: str):
+        user_name = user_name.replace('@', "")
         for player in self.players:
             if player.user_name == user_name:
                 return player
@@ -113,7 +115,7 @@ class Game:
                     context.bot.send_message(chat_id=player.user_id, text=player.rule)
                 context.bot.send_message(chat_id=self.group_chat_id, text='Game has been started!')
                 self.is_started = True
-                self.day(context)
+                self.turn(context)
 
             else:
                 context.bot.send_message(chat_id=self.group_chat_id, text='Game is canceled because there is not '
@@ -150,10 +152,10 @@ class Game:
                 dead_player_vote = num
                 dead_player = player
         context.bot.send_message(chat_id=self.group_chat_id, text=dead_player + ' died')
-        dead_player = dead_player.replace("@", "")
         self.get_player_by_user_name(dead_player).is_alive = False
         dead_player = ''
         dead.clear()
+        self.votes.clear()
 
     def day(self, context: telegram.ext.CallbackContext):
         self.state = "day"
@@ -163,12 +165,12 @@ class Game:
             poll = Poll("Who do you want to kill?", self.get_alive_players(), player)
             poll.send_poll(context)
         context.bot.send_message(chat_id=self.group_chat_id, text="30 seconds left until the end of voting")
-        context.job_queue.run_once(self.show_result, 15, context)
+        context.job_queue.run_once(self.show_result, 30, context)
 
     def get_mafia_number(self):
         counter = 0
         for player in self.get_alive_players():
-            if (player.rule == 'mafia'):
+            if player.rule == 'mafia':
                 counter = counter + 1
         return counter
 
@@ -176,42 +178,78 @@ class Game:
         mafias_list = ""
         founded_mafias = 0
         for player in self.players:
-            if (player.rule == 'mafia'):
+            if player.rule == 'mafia':
                 founded_mafias += 1
-                if (founded_mafias != self.get_mafia_number()):
+                if founded_mafias != self.get_mafia_number():
                     mafias_list += "@" + player.user_name + " and "
-                if (founded_mafias == self.get_mafia_number()):
+                if founded_mafias == self.get_mafia_number():
                     mafias_list += "@" + player.user_name
         message = ""
-        if (self.get_mafia_number() == 1):
+        if self.get_mafia_number() == 1:
             message = "You are the only mafia of the game. good luck :)"
-        if (self.get_mafia_number() > 1):
+        if self.get_mafia_number() > 1:
             message = "Your mafia team is " + mafias_list + "good luck :)"
         return message
 
     def mafia_want(self):
         targets = []
         for player in self.get_alive_players():
-            if (player.rule != 'mafia'):
+            if player.rule != 'mafia':
                 targets.append(player)
         return targets
 
     def other_players(self, player):
         players = []
         for p in self.get_alive_players():
-            if (p.rule != player.rule):
-                players.append(player)
+            if p != player:
+                players.append(p)
         return players
 
     def night(self, context: telegram.ext.CallbackContext):
         self.state = "night"
-        for player in self.players:
-            if (player.rule == 'police'):
+        for player in self.get_alive_players():
+            if player.rule == 'police':
                 poll = Poll("who do you doubt🕵️?", self.other_players(player), player)
                 poll.send_poll(context)
-            if (player.rule == 'doctor'):
+            if player.rule == 'doctor':
                 poll = Poll("who do you want to save👨‍", self.get_alive_players(), player)
                 poll.send_poll(context)
-            if (player.rule == 'mafia'):
+            if player.rule == 'mafia':
                 poll = Poll("who do you want to kill😈", self.mafia_want(), player)
                 poll.send_poll(context)
+        context.bot.send_message(chat_id=self.group_chat_id, text="60 second left from night!")
+        time.sleep(70)
+        mafia_kill = ''
+        mafia_kill_result = 1
+        doctor_save = ''
+        police_choice = ''
+        police_choice_result = 0
+
+        for player, choice in self.votes.items():
+            if self.get_player_by_user_name(player).rule == 'mafia':
+                if len(choice) > 0:
+                    mafia_kill = choice[0]
+            if self.get_player_by_user_name(player).rule == 'doctor':
+                if len(choice) > 0:
+                    doctor_save = choice[0]
+            if self.get_player_by_user_name(player).rule == 'police':
+                if len(choice) > 0:
+                    police_choice = choice[0]
+        if mafia_kill == doctor_save:
+            mafia_kill_result = 0
+        if self.get_player_by_user_name(police_choice).rule == 'mafia':
+            police_choice_result = 1
+
+        if mafia_kill_result == 1:
+            self.get_player_by_user_name(mafia_kill).is_alive = False
+        context.bot.send_message(chat_id=self.group_chat_id, text='@' + mafia_kill + ' died')
+        if police_choice_result == 1:
+            context.bot.send_message(chat_id=self.group_chat_id, text="Police guessed right!")
+        self.votes.clear()
+
+    def turn(self, context: telegram.ext.CallbackContext):
+        while 1 == 1:
+            self.day(context)
+            time.sleep(len(self.get_alive_players()) * 5+50)
+            self.night(context)
+            time.sleep(70)

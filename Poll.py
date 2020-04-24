@@ -13,7 +13,7 @@ class Poll:
         self.init_keyboard()
 
     def send_poll(self, context: telegram.ext.CallbackContext):
-        context.bot.send_message(chat_id=self.asked_player.user_id, text='You want to kill:',
+        context.bot.send_message(chat_id=self.asked_player.user_id, text=self.title,
                                  reply_markup=self.reply_markup)
 
     def reset(self):
