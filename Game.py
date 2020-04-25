@@ -159,9 +159,11 @@ class Game:
         for player, num in dead.items():
             if num > dead_player_vote:
                 dead_player_vote = num
-                max_vote_players_list.append(player)
         print(3)
-        if (len(max_vote_players_list) == 1):
+        for player, num in dead.items():
+            if num == dead_player_vote:
+                max_vote_players_list.append(player)
+        if len(max_vote_players_list) == 1:
             dead_player = max_vote_players_list[0]
             context.bot.send_message(chat_id=self.group_chat_id, text=dead_player + ' died')
             self.get_player_by_user_name(dead_player).is_alive = False
@@ -232,7 +234,7 @@ class Game:
                 poll = Poll("who do you want to kill😈", self.mafia_want(), player)
                 poll.send_poll(context)
         context.bot.send_message(chat_id=self.group_chat_id, text="60 second left from night!")
-        time.sleep(70)
+        time.sleep(60)
         mafia_kill = ''
         mafia_kill_result = 1
         doctor_save = ''
@@ -240,15 +242,19 @@ class Game:
         police_choice_result = 0
 
         for player, choice in self.votes.items():
+            print(player)
             if self.get_player_by_user_name(player).rule == 'mafia':
                 if len(choice) > 0:
                     mafia_kill = choice[0]
+                    context.bot.send_message(chat_id=self.group_chat_id, text="mafia" + choice[0])
             if self.get_player_by_user_name(player).rule == 'doctor':
                 if len(choice) > 0:
                     doctor_save = choice[0]
+                    context.bot.send_message(chat_id=self.group_chat_id, text="doctor" + choice[0])
             if self.get_player_by_user_name(player).rule == 'police':
                 if len(choice) > 0:
                     police_choice = choice[0]
+                    context.bot.send_message(chat_id=self.group_chat_id, text="police" + choice[0])
         if mafia_kill == doctor_save:
             mafia_kill_result = 0
         if police_choice != '' and self.get_player_by_user_name(police_choice).rule == 'mafia':
@@ -261,7 +267,27 @@ class Game:
             context.bot.send_message(chat_id=self.group_chat_id, text="Police guessed right!")
         self.votes.clear()
 
+    def end_game(self, context: telegram.ext.CallbackContext):
+        mafia = 0
+        citizen = 0
+        for player in self.get_alive_players():
+            if player.rule == 'mafia':
+                mafia = mafia + 1
+            else:
+                citizen = citizen + 1
+        if mafia >= citizen:
+            context.bot.send_message(chat_id=self.group_chat_id, text="Mafia win!")
+            self.is_started = False
+            return False
+        elif mafia == 0:
+            context.bot.send_message(chat_id=self.group_chat_id, text="City win!")
+            self.is_started = False
+            return False
+        else:
+            return True
+
     def turn(self, context: telegram.ext.CallbackContext):
-        self.day(context)
-        context.job_queue.run_once(self.night, 50, context)
-        context.job_queue.run_once(self.turn, 110, context)
+        if self.end_game(context):
+            self.day(context)
+            context.job_queue.run_once(self.night, 50, context)
+            context.job_queue.run_once(self.turn, 130, context)
