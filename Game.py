@@ -136,25 +136,38 @@ class Game:
         del self.group_data["active_game"]
 
     def show_result(self, context: telegram.ext.CallbackContext):
+        print(1)
         dead = {}
         for player in self.votes.keys():
             dead.update({player: 0})
+        # calculate votes
         for player, player_votes in self.votes.items():
             player_votes_print = ""
-            for v in player_votes:
+            for v in player_votes[:len(player_votes) - 1]:
                 player_votes_print += '@' + v + ' and'
                 dead.update({'@' + v: dead.get('@' + v) + 1})
+            if len(player_votes) != 0:
+                v = player_votes[len(player_votes) - 1]
+                player_votes_print += '@' + v
+                dead.update({'@' + v: dead.get('@' + v) + 1})
             context.bot.send_message(chat_id=self.group_chat_id, text=player + ' voted to ' + player_votes_print)
+        print(2)
+        # finding maxiumum votes
+        max_vote_players_list = []
         dead_player = ""
         dead_player_vote = 0
         for player, num in dead.items():
             if num > dead_player_vote:
                 dead_player_vote = num
-                dead_player = player
-        context.bot.send_message(chat_id=self.group_chat_id, text=dead_player + ' died')
-        self.get_player_by_user_name(dead_player).is_alive = False
-        dead_player = ''
-        dead.clear()
+                max_vote_players_list.append(player)
+        print(3)
+        if (len(max_vote_players_list) == 1):
+            dead_player = max_vote_players_list[0]
+            context.bot.send_message(chat_id=self.group_chat_id, text=dead_player + ' died')
+            self.get_player_by_user_name(dead_player).is_alive = False
+        else:
+            context.bot.send_message(chat_id=self.group_chat_id, text='Nobody died today')
+        print(4)
         self.votes.clear()
 
     def day(self, context: telegram.ext.CallbackContext):
@@ -166,6 +179,7 @@ class Game:
             poll.send_poll(context)
         context.bot.send_message(chat_id=self.group_chat_id, text="30 seconds left until the end of voting")
         context.job_queue.run_once(self.show_result, 30, context)
+        print("planned")
 
     def get_mafia_number(self):
         counter = 0
@@ -237,7 +251,7 @@ class Game:
                     police_choice = choice[0]
         if mafia_kill == doctor_save:
             mafia_kill_result = 0
-        if self.get_player_by_user_name(police_choice).rule == 'mafia':
+        if police_choice != '' and self.get_player_by_user_name(police_choice).rule == 'mafia':
             police_choice_result = 1
 
         if mafia_kill_result == 1:
@@ -248,8 +262,6 @@ class Game:
         self.votes.clear()
 
     def turn(self, context: telegram.ext.CallbackContext):
-        while 1 == 1:
-            self.day(context)
-            time.sleep(len(self.get_alive_players()) * 5+50)
-            self.night(context)
-            time.sleep(70)
+        self.day(context)
+        context.job_queue.run_once(self.night, 50, context)
+        context.job_queue.run_once(self.turn, 110, context)
