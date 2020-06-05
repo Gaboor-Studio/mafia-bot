@@ -67,6 +67,7 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
 def join(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
     group_data = context.chat_data
+    print("hi")
     user_data = context.user_data
     if "active_game" in group_data.keys():
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
