@@ -291,9 +291,16 @@ class Game:
             return True
 
     def turn(self, context: telegram.ext.CallbackContext):
-        if self.end_game(context):
+        flag = True
+        if self.end_game(context) and flag:
             self.day(context)
-        if self.end_game(context):
+        else:
+            flag = False
+        if self.end_game(context) and flag:
             context.job_queue.run_once(self.night, 50, context)
-        if self.end_game(context):
+        else:
+            flag = False
+        if self.end_game(context) and flag:
             context.job_queue.run_once(self.turn, 130, context)
+        else:
+            flag = False

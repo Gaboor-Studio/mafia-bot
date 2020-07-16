@@ -2,6 +2,7 @@ import telegram
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from Game import Game
 import requests
+from Poll import Poll
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
 TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
@@ -53,6 +54,8 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
         context.job_queue.run_once(game.start_game, 60, context=(update.message.chat_id, context.chat_data),
                                    name=group_id)
         update.message.reply_text("New game started")
+        context.bot.send_sticker(chat_id=game.group_chat_id,
+                                 sticker="CAACAgQAAxkBAAEBD-9fELCBJ4_U7b_44SDRRpQhTFuz0QACCgAD1ul3K2aGQJk3kHlCGgQ")
 
     else:
         update.message.reply_text("This group has an unfinished game!")
@@ -111,8 +114,12 @@ def button(update: telegram.Update, context):
     query = update.callback_query
     game = context.user_data["active_game"]
     if game.state == "day":
+        print("salam")
         query.answer()
         list_vote = game.votes.get('@' + query.from_user['username'])
+        for playeri in game.players:
+            if playeri.user_name == query.from_user['username']:
+                the_player = playeri
         vote = query.data
         query.edit_message_text(text=f"Your choice: @{vote}")
         list_vote.append(vote)
@@ -121,10 +128,12 @@ def button(update: telegram.Update, context):
             for alive in list_players:
                 if vote_player == alive.user_name:
                     list_players.remove(alive)
-        poll = Poll("Who do you want to kill?", list_players, '@' + query.from_user['username'])
+
+        poll = Poll("Who do you want to kill?", list_players, the_player)
         poll.send_poll(context)
         game.votes.update({'@' + query.from_user['username']: list_vote})
     elif game.state == "night":
+        print("khoobi")
         query.answer()
         list_vote = game.votes.get('@' + query.from_user['username'])
         vote = query.data
