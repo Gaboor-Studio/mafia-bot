@@ -110,14 +110,27 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 def button(update: telegram.Update, context):
     query = update.callback_query
     game = context.user_data["active_game"]
-    query.answer()
-    list_vote = game.votes.get('@' + query.from_user['username'])
-    vote = query.data
-    print(vote)
-    print(query.from_user['username'])
-    query.edit_message_text(text=f"Your choice: @{vote}")
-    list_vote.append(vote)
-    game.votes.update({'@' + query.from_user['username']: list_vote})
+    if game.state == "day":
+        query.answer()
+        list_vote = game.votes.get('@' + query.from_user['username'])
+        vote = query.data
+        query.edit_message_text(text=f"Your choice: @{vote}")
+        list_vote.append(vote)
+        list_players = game.get_alive_players()
+        for vote_player in list_vote:
+            for alive in list_players:
+                if vote_player == alive.user_name:
+                    list_players.remove(alive)
+        poll = Poll("Who do you want to kill?", list_players, '@' + query.from_user['username'])
+        poll.send_poll(context)
+        game.votes.update({'@' + query.from_user['username']: list_vote})
+    elif game.state == "night":
+        query.answer()
+        list_vote = game.votes.get('@' + query.from_user['username'])
+        vote = query.data
+        query.edit_message_text(text=f"Your choice: @{vote}")
+        list_vote.append(vote)
+        game.votes.update({'@' + query.from_user['username']: list_vote})
 
 
 dispatcher = updater.dispatcher

@@ -293,5 +293,7 @@ class Game:
     def turn(self, context: telegram.ext.CallbackContext):
         if self.end_game(context):
             self.day(context)
+        if self.end_game(context):
             context.job_queue.run_once(self.night, 50, context)
+        if self.end_game(context):
             context.job_queue.run_once(self.turn, 130, context)
