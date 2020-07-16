@@ -113,6 +113,8 @@ def button(update: telegram.Update, context):
     query.answer()
     list_vote = game.votes.get('@' + query.from_user['username'])
     vote = query.data
+    print(vote)
+    print(query.from_user['username'])
     query.edit_message_text(text=f"Your choice: @{vote}")
     list_vote.append(vote)
     game.votes.update({'@' + query.from_user['username']: list_vote})

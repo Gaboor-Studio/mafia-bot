@@ -136,7 +136,6 @@ class Game:
         del self.group_data["active_game"]
 
     def show_result(self, context: telegram.ext.CallbackContext):
-        print(1)
         dead = {}
         for player in self.votes.keys():
             dead.update({player: 0})
@@ -151,7 +150,6 @@ class Game:
                 player_votes_print += '@' + v
                 dead.update({'@' + v: dead.get('@' + v) + 1})
             context.bot.send_message(chat_id=self.group_chat_id, text=player + ' voted to ' + player_votes_print)
-        print(2)
         # finding maxiumum votes
         max_vote_players_list = []
         dead_player = ""
@@ -159,7 +157,6 @@ class Game:
         for player, num in dead.items():
             if num > dead_player_vote:
                 dead_player_vote = num
-        print(3)
         for player, num in dead.items():
             if num == dead_player_vote:
                 max_vote_players_list.append(player)
@@ -169,8 +166,8 @@ class Game:
             self.get_player_by_user_name(dead_player).is_alive = False
         else:
             context.bot.send_message(chat_id=self.group_chat_id, text='Nobody died today')
-        print(4)
-        self.votes.clear()
+        for key, value in self.votes.items():
+            value.clear()
 
     def day(self, context: telegram.ext.CallbackContext):
         self.state = "day"
@@ -181,7 +178,6 @@ class Game:
             poll.send_poll(context)
         context.bot.send_message(chat_id=self.group_chat_id, text="30 seconds left until the end of voting")
         context.job_queue.run_once(self.show_result, 30, context)
-        print("planned")
 
     def get_mafia_number(self):
         counter = 0
@@ -221,20 +217,8 @@ class Game:
                 players.append(p)
         return players
 
-    def night(self, context: telegram.ext.CallbackContext):
-        self.state = "night"
-        for player in self.get_alive_players():
-            if player.rule == 'police':
-                poll = Poll("who do you doubt🕵️?", self.other_players(player), player)
-                poll.send_poll(context)
-            if player.rule == 'doctor':
-                poll = Poll("who do you want to save👨‍", self.get_alive_players(), player)
-                poll.send_poll(context)
-            if player.rule == 'mafia':
-                poll = Poll("who do you want to kill😈", self.mafia_want(), player)
-                poll.send_poll(context)
-        context.bot.send_message(chat_id=self.group_chat_id, text="60 second left from night!")
-        time.sleep(60)
+    def show_night_result(self, context: telegram.ext.CallbackContext):
+        print("res night")
         mafia_kill = ''
         mafia_kill_result = 1
         doctor_save = ''
@@ -242,7 +226,6 @@ class Game:
         police_choice_result = 0
 
         for player, choice in self.votes.items():
-            print(player)
             if self.get_player_by_user_name(player).rule == 'mafia':
                 if len(choice) > 0:
                     mafia_kill = choice[0]
@@ -266,6 +249,27 @@ class Game:
         if police_choice_result == 1:
             context.bot.send_message(chat_id=self.group_chat_id, text="Police guessed right!")
         self.votes.clear()
+
+    def poll_night(self, context: telegram.ext.CallbackContext):
+        for player in self.get_alive_players():
+            if player.rule == 'police':
+                poll = Poll("who do you doubt🕵️?", self.other_players(player), player)
+                poll.send_poll(context)
+            if player.rule == 'doctor':
+                poll = Poll("who do you want to save👨‍", self.get_alive_players(), player)
+                poll.send_poll(context)
+            if player.rule == 'mafia':
+                poll = Poll("who do you want to kill😈", self.mafia_want(), player)
+                poll.send_poll(context)
+
+    def night(self, context: telegram.ext.CallbackContext):
+        self.state = "night"
+        self.poll_night(context)
+        print(1)
+        context.bot.send_message(chat_id=self.group_chat_id, text="60 second left from night!")
+        print(2)
+        context.job_queue.run_once(self.show_night_result, 60, context)
+        print(3)
 
     def end_game(self, context: telegram.ext.CallbackContext):
         mafia = 0
