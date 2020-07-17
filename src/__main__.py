@@ -53,10 +53,9 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
         group_data["active_game"] = game
         context.job_queue.run_once(game.start_game, 60, context=(update.message.chat_id, context.chat_data),
                                    name=group_id)
-        update.message.reply_text("New game started")
         context.bot.send_sticker(chat_id=game.group_chat_id,
-                                 sticker="CAACAgQAAxkBAAEBD-9fELCBJ4_U7b_44SDRRpQhTFuz0QACCgAD1ul3K2aGQJk3kHlCGgQ")
-
+                                 sticker="CAACAgQAAxkBAAEBEGZfEajfE4ubecspTvk_h_MmLWldhwACFwAD1ul3K_CgFM5dUHoRGgQ")
+        update.message.reply_text("New game started")
     else:
         update.message.reply_text("This group has an unfinished game!")
 
@@ -70,7 +69,6 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
 def join(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
     group_data = context.chat_data
-    print("hi")
     user_data = context.user_data
     if "active_game" in group_data.keys():
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -111,10 +109,10 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 
 
 def button(update: telegram.Update, context):
+    global the_player
     query = update.callback_query
     game = context.user_data["active_game"]
     if game.state == "day":
-        print("salam")
         query.answer()
         list_vote = game.votes.get('@' + query.from_user['username'])
         for playeri in game.players:
@@ -128,12 +126,11 @@ def button(update: telegram.Update, context):
             for alive in list_players:
                 if vote_player == alive.user_name:
                     list_players.remove(alive)
-
-        poll = Poll("Who do you want to kill?", list_players, the_player)
-        poll.send_poll(context)
+        if len(list_players) > 0:
+            poll = Poll("Who do you want to kill?", list_players, the_player)
+            poll.send_poll(context)
         game.votes.update({'@' + query.from_user['username']: list_vote})
     elif game.state == "night":
-        print("khoobi")
         query.answer()
         list_vote = game.votes.get('@' + query.from_user['username'])
         vote = query.data

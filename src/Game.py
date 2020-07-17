@@ -218,7 +218,6 @@ class Game:
         return players
 
     def show_night_result(self, context: telegram.ext.CallbackContext):
-        print("res night")
         mafia_kill = ''
         mafia_kill_result = 1
         doctor_save = ''
@@ -229,15 +228,12 @@ class Game:
             if self.get_player_by_user_name(player).rule == 'mafia':
                 if len(choice) > 0:
                     mafia_kill = choice[0]
-                    context.bot.send_message(chat_id=self.group_chat_id, text="mafia" + choice[0])
             if self.get_player_by_user_name(player).rule == 'doctor':
                 if len(choice) > 0:
                     doctor_save = choice[0]
-                    context.bot.send_message(chat_id=self.group_chat_id, text="doctor" + choice[0])
             if self.get_player_by_user_name(player).rule == 'police':
                 if len(choice) > 0:
                     police_choice = choice[0]
-                    context.bot.send_message(chat_id=self.group_chat_id, text="police" + choice[0])
         if mafia_kill == doctor_save:
             mafia_kill_result = 0
         if police_choice != '' and self.get_player_by_user_name(police_choice).rule == 'mafia':
@@ -245,10 +241,15 @@ class Game:
 
         if mafia_kill_result == 1:
             self.get_player_by_user_name(mafia_kill).is_alive = False
-        context.bot.send_message(chat_id=self.group_chat_id, text='@' + mafia_kill + ' died')
+            context.bot.send_message(chat_id=self.group_chat_id, text='@' + mafia_kill + ' died')
+        else:
+            context.bot.send_message(chat_id=self.group_chat_id, text='Nobody died last night!')
         if police_choice_result == 1:
             context.bot.send_message(chat_id=self.group_chat_id, text="Police guessed right!")
-        self.votes.clear()
+        else:
+            context.bot.send_message(chat_id=self.group_chat_id, text="Police guessed wrong!")
+        for key, value in self.votes.items():
+            value.clear()
 
     def poll_night(self, context: telegram.ext.CallbackContext):
         for player in self.get_alive_players():
@@ -265,11 +266,8 @@ class Game:
     def night(self, context: telegram.ext.CallbackContext):
         self.state = "night"
         self.poll_night(context)
-        print(1)
         context.bot.send_message(chat_id=self.group_chat_id, text="60 second left from night!")
-        print(2)
         context.job_queue.run_once(self.show_night_result, 60, context)
-        print(3)
 
     def end_game(self, context: telegram.ext.CallbackContext):
         mafia = 0
@@ -280,10 +278,14 @@ class Game:
             else:
                 citizen = citizen + 1
         if mafia >= citizen:
+            context.bot.send_sticker(chat_id=self.group_chat_id,
+                                     sticker="CAACAgQAAxkBAAEBEGpfEajpXdMaTTseiJvWttCJFXbtwwACGQAD1ul3K3z-LuYH7F5fGgQ")
             context.bot.send_message(chat_id=self.group_chat_id, text="Mafia win!")
             self.is_started = False
             return False
         elif mafia == 0:
+            context.bot.send_sticker(chat_id=self.group_chat_id,
+                                     sticker="CAACAgQAAxkBAAEBEGhfEajlbVPbMEesXXrgq4wOe-5eBAACGAAD1ul3K4WFHtFPPfm2GgQ")
             context.bot.send_message(chat_id=self.group_chat_id, text="City win!")
             self.is_started = False
             return False
@@ -291,16 +293,15 @@ class Game:
             return True
 
     def turn(self, context: telegram.ext.CallbackContext):
-        flag = True
-        if self.end_game(context) and flag:
+        if self.end_game(context):
             self.day(context)
         else:
-            flag = False
-        if self.end_game(context) and flag:
+            return True
+        if self.end_game(context):
             context.job_queue.run_once(self.night, 50, context)
         else:
-            flag = False
-        if self.end_game(context) and flag:
-            context.job_queue.run_once(self.turn, 130, context)
+            return True
+        if self.end_game(context):
+            context.job_queue.run_once(self.turn, 180, context)
         else:
-            flag = False
+            return True
