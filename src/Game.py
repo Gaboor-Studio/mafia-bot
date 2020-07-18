@@ -1,6 +1,6 @@
 import telegram
 import random
-from Player import Player
+from Player import Player, Mafia, GodFather, Citizen, Doctor, Detective, Sniper
 from telegram.ext import Updater
 from Poll import Poll
 import time
@@ -17,9 +17,10 @@ class Game:
     def __init__(self, group_chat_id, group_data):
         self.night_votes = {"Mafia_shot": None,
                             "Detective": None, "Doctor": None, "Sniper": None}
-        self.day_votes = {}  '''example: {"amirparsa_sal" : {"yes_votes" : ["salinaria","mohokaja"], "no_votes" : [] },
-                                          "salinaria" : {"yes_votes" : ["amirparsa_sal"], "no_votes" : [] 
-                                                                                            "}'''
+        self.day_votes = {}
+        '''example: {"amirparsa_sal" : {"yes_votes" : ["salinaria","mohokaja"], "no_votes" : [] },
+                                                "salinaria" : {"yes_votes" : ["amirparsa_sal"], "no_votes" : [] 
+                                                                                                  "}'''
         self.players = []
         self.mafias = []
         self.citizens = []
@@ -38,8 +39,8 @@ class Game:
             update.message.reply_text(self.get_list())
             context.bot.send_message(
                 chat_id=user['id'], text="You joined the game successfully")
-            arrlist = []
-            self.votes.update({'@' + player.user_name: arrlist})
+            array = []
+            self.votes.update({'@' + player.user_name: array})
         else:
             if user_data["active_game"] == self:
                 update.message.reply_text(
@@ -100,22 +101,45 @@ class Game:
             del player.user_data["active_game"]
         del self.group_data["active_game"]
 
-    def day(self, context: telegram.ext.CallbackContext):
-        self.state = "day"
-        for player in self.get_alive_players():
-            player.talk(self.group_chat_id, context)
-        for player in self.get_alive_players():
-            poll = Poll("Who do you want to kill?",
-                        self.get_alive_players(), player)
-            poll.send_poll(context)
-        context.bot.send_message(
-            chat_id=self.group_chat_id, text="30 seconds left until the end of voting")
-        context.job_queue.run_once(self.show_result, 30, context)
+    def player_just_player(self):
+        player_just_player = []
+        for player in self.players:
+            if type(player) == 'Player':
+                player_just_player.append(player)
+        return player_just_player
 
-    def get_mafia_number(self):
-        counter = 0
-        for player in self.get_alive_players():
-            if player.rule == 'mafia':
-                counter = counter + 1
-        return counter
+    def set_players_rules(self):
 
+        # GodFather
+        player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
+        player = GodFather(player.name, player.user_name, player.user_id, player.user_data,
+                           player.active_game)
+        # Doctor
+        player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
+        player = Doctor(player.name, player.user_name, player.user_id, player.user_data,
+                        player.active_game)
+        # Detective
+        player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
+        player = Detective(player.name, player.user_name, player.user_id, player.user_data,
+                           player.active_game)
+        # Sniper
+        player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
+        player = Sniper(player.name, player.user_name, player.user_id, player.user_data,
+                        player.active_game)
+        # Mafias
+        if len(self.player_just_player()) > 0:
+            for i in range(0, int(len(self.player_just_player()) / 3)):
+                player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
+                player = Mafia(player.name, player.user_name, player.user_id, player.user_data,
+                               player.active_game)
+        # Citizens
+        for player in self.player_just_player():
+            player = Citizen(player.name, player.user_name, player.user_id, player.user_data,
+                             player.active_game)
+
+    def get_citizens(self):
+        citizens = []
+        for player in self.players:
+            if isinstance(player, Citizen):
+                citizens.append(player)
+        return citizens

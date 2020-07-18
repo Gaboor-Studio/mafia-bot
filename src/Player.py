@@ -20,7 +20,7 @@ class Teams(enum.Enum):
 
 
 class Player:
-    '''Attributes:
+    """Attributes:
         active_game: player's active game
         name: player's profile name
         user_name: player's username
@@ -28,7 +28,7 @@ class Player:
         user_data: player's telegram data
         is_alive: is player alive or not
         emoji: player's emoji
-    '''
+    """
 
     def __init__(self, name, user_name, user_id, user_data, active_game):
         self.active_game = active_game
@@ -39,34 +39,30 @@ class Player:
         self.is_alive = True
         self.emoji = None
 
-    def send_day_poll(self):
+    def do_the_job(self):
         pass
 
-    def doTheJob(self):
-        pass
-
-    def toString(self):
+    def to_string(self):
         pass
 
 
 class Mafia(Player):
-
-    '''Additional attributes:
-        team_mates_username: list of team mates usernames
-    '''
+    """Additional attributes:
+        team_mates_username: list of teammates' username
+    """
 
     def __init__(self, name, user_name, user_id, user_data, active_game):
         super().__init__(name, user_name, user_id, user_data, active_game)
         self.emoji = "!"
         self.team_mates_username = []
 
-    def findTeam(self):
+    def find_team(self):
         return "Mafia"
 
-    def findRule(self):
+    def find_rule(self):
         return Rules.Mafia
 
-    def doTheJob(self):
+    def do_the_job(self):
         # Ask for shot
         pass
 
@@ -77,7 +73,7 @@ class GodFather(Mafia):
         super().__init__(name, user_name, user_id, user_data, active_game)
         self.emoji = "!!!"
 
-    def findRule(self):
+    def find_rule(self):
         return Rules.GodFather
 
 
@@ -87,18 +83,17 @@ class Citizen(Player):
         super().__init__(name, user_name, user_id, user_data, active_game)
         self.emoji = ":)"
 
-    def findTeam(self):
+    def find_team(self):
         return Teams.City
 
-    def findRule(self):
+    def find_rule(self):
         return Rules.Citizen
 
 
 class Doctor(Citizen):
-
-    '''Additional attributes:
+    """Additional attributes:
         saved_himself: number of times that doctor saved himself
-    '''
+    """
 
     def __init__(self, name, user_name, user_id, user_data, active_game):
         super().__init__(name, user_name, user_id, user_data, active_game)
@@ -106,37 +101,35 @@ class Doctor(Citizen):
         self.saved_himself = 0
         self.maximum_himself_save = 2
 
-    def set_maxiumum_himself_save(self, saves_number):
+    def set_maximum_himself_save(self, saves_number):
         self.maximum_himself_save = saves_number
 
-    def findRule(self):
+    def find_rule(self):
         return Rules.Doctor
 
 
 class Detective(Citizen):
-
-    '''Detective attributes:
+    """Detective attributes:
         detections: a dictionary that saves previous detections
-    '''
+    """
 
     def __init__(self, name, user_name, user_id, user_data, active_game):
         super().__init__(name, user_name, user_id, user_data, active_game)
         self.emoji = "*"
         self.detections = {}
 
-    def findRule(self):
+    def find_rule(self):
         return Rules.Detective
 
-    def doTheJob(self):
+    def do_the_job(self):
         # Send the poll for detection
         pass
 
 
 class Sniper(Citizen):
-
-    '''Additional attributes:
+    """Additional attributes:
         shots: number of sniper's shots
-    '''
+    """
 
     def __init__(self, name, user_name, user_id, user_data, active_game):
         super().__init__(name, user_name, user_id, user_data, active_game)
@@ -146,9 +139,9 @@ class Sniper(Citizen):
     def set_shots(self, number):
         self.shots = number
 
-    def doTheJob(self):
+    def do_the_job(self):
         # Send the poll
         pass
 
-    def findRule(self):
+    def find_rule(self):
         return Rules.Sniper
