@@ -109,33 +109,45 @@ class Game:
         return player_just_player
 
     def set_players_rules(self):
-
+        mafia_number = 1
+		#First Mafia
+        r = random.randrange(0, len(self.player_just_player()))
+        self.player_just_player()[r] = Mafia(player.name, player.user_name, player.user_id, player.user_data,
+                           player.active_game)
+        self.mafias.append(self.player_just_player()[r])    	
         # GodFather
-        player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
-        player = GodFather(player.name, player.user_name, player.user_id, player.user_data,
-                           player.active_game)
+        if(mafia_number<len(self.players)/3):
+            r = random.randrange(0, len(self.player_just_player()))
+            self.player_just_player()[r] = GodFather(player.name, player.user_name, player.user_id, player.user_data,player.active_game)  
+            self.mafias.append(self.player_just_player()[r]) 
+            mafia_number = 2
+		#Other Mafias
+        for i in range(len(self.players)/3 - mafia_number):
+            r = random.randrange(0, len(self.player_just_player()))
+            self.player_just_player()[r] = Mafia(player.name, player.user_name, player.user_id, player.user_data,
+                           player.active_game) 
+            self.mafias.append(self.player_just_player()[r]) 
         # Doctor
-        player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
-        player = Doctor(player.name, player.user_name, player.user_id, player.user_data,
-                        player.active_game)
+        r = random.randrange(0, len(self.player_just_player()))
+        self.player_just_player()[r] = Doctor(player.name, player.user_name, player.user_id, player.user_data,
+                           player.active_game) 
+        self.citizens.append(self.player_just_player()[r]) 
         # Detective
-        player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
-        player = Detective(player.name, player.user_name, player.user_id, player.user_data,
+        r = random.randrange(0, len(self.player_just_player()))
+        self.player_just_player()[r] = Detective(player.name, player.user_name, player.user_id, player.user_data,
                            player.active_game)
+        self.citizens.append(self.player_just_player()[r]) 
         # Sniper
-        player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
-        player = Sniper(player.name, player.user_name, player.user_id, player.user_data,
-                        player.active_game)
-        # Mafias
-        if len(self.player_just_player()) > 0:
-            for i in range(0, int(len(self.player_just_player()) / 3)):
-                player = self.player_just_player[random.randrange(0, len(player_just_player) - 1)]
-                player = Mafia(player.name, player.user_name, player.user_id, player.user_data,
-                               player.active_game)
+        if(len(self.players>6)):
+            r = random.randrange(0, len(self.player_just_player()))
+            self.player_just_player()[r] = Sniper(player.name, player.user_name, player.user_id, player.user_data,
+                           player.active_game) 
+            self.citizens.append(self.player_just_player()[r])
         # Citizens
-        for player in self.player_just_player():
-            player = Citizen(player.name, player.user_name, player.user_id, player.user_data,
+        for i in range(len(self.player_just_player())):
+            self.player_just_player[i] = Citizen(player.name, player.user_name, player.user_id, player.user_data,
                              player.active_game)
+            self.citizens.append(self.player_just_player()[i])
 
     def get_citizens(self):
         citizens = []
