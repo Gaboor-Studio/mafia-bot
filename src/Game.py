@@ -110,44 +110,74 @@ class Game:
 
     def set_players_rules(self):
         mafia_number = 1
-		#First Mafia
+        # First Mafia
         r = random.randrange(0, len(self.player_just_player()))
         self.player_just_player()[r] = Mafia(player.name, player.user_name, player.user_id, player.user_data,
-                           player.active_game)
-        self.mafias.append(self.player_just_player()[r])    	
+                                             player.active_game)
+        self.mafias.append(self.player_just_player()[r])
+        context.bot.send_sticker(chat_id=self.player_just_player()[r].user_id,
+                                 sticker="CAACAgQAAxkBAAEBEUtfE0dFaAz9MUL8D5wg6Na2-YnQwwACHQAD1ul3K-J4YMXfsX4oGgQ")
+        context.bot.send_message(chat_id=self.player_just_player()[r].user_id, text='Mafia')
+
         # GodFather
-        if(mafia_number<len(self.players)/3):
+        if mafia_number < len(self.players) / 3:
             r = random.randrange(0, len(self.player_just_player()))
-            self.player_just_player()[r] = GodFather(player.name, player.user_name, player.user_id, player.user_data,player.active_game)  
-            self.mafias.append(self.player_just_player()[r]) 
+            self.player_just_player()[r] = GodFather(player.name, player.user_name, player.user_id, player.user_data,
+                                                     player.active_game)
+            self.mafias.append(self.player_just_player()[r])
             mafia_number = 2
-		#Other Mafias
-        for i in range(len(self.players)/3 - mafia_number):
+            context.bot.send_sticker(chat_id=self.player_just_player()[r].user_id,
+                                     sticker="CAACAgQAAxkBAAEBEU1fE0eH9cuSbcnfD4DR2x7R2dk4pwACGgAD1ul3K6tFV61NP-r5GgQ")
+            context.bot.send_message(chat_id=self.player_just_player()[r].user_id, text='GodFather')
+
+        # Other Mafias
+        for i in range(int(len(self.players) / 3 - mafia_number)):
             r = random.randrange(0, len(self.player_just_player()))
             self.player_just_player()[r] = Mafia(player.name, player.user_name, player.user_id, player.user_data,
-                           player.active_game) 
-            self.mafias.append(self.player_just_player()[r]) 
+                                                 player.active_game)
+            self.mafias.append(self.player_just_player()[r])
+            context.bot.send_sticker(chat_id=self.player_just_player()[r].user_id,
+                                     sticker="CAACAgQAAxkBAAEBEUtfE0dFaAz9MUL8D5wg6Na2-YnQwwACHQAD1ul3K-J4YMXfsX4oGgQ")
+            context.bot.send_message(chat_id=self.player_just_player()[r].user_id, text='Mafia')
+
         # Doctor
         r = random.randrange(0, len(self.player_just_player()))
         self.player_just_player()[r] = Doctor(player.name, player.user_name, player.user_id, player.user_data,
-                           player.active_game) 
-        self.citizens.append(self.player_just_player()[r]) 
+                                              player.active_game)
+        self.citizens.append(self.player_just_player()[r])
+        context.bot.send_sticker(chat_id=self.player_just_player()[r].user_id,
+                                 sticker="CAACAgQAAxkBAAEBEU9fE0go967QwvK8s_sqY4js15WHWgACHgAD1ul3K_mMfTHPD6mEGgQ")
+        context.bot.send_message(chat_id=self.player_just_player()[r].user_id, text='Doctor')
+
         # Detective
         r = random.randrange(0, len(self.player_just_player()))
         self.player_just_player()[r] = Detective(player.name, player.user_name, player.user_id, player.user_data,
-                           player.active_game)
-        self.citizens.append(self.player_just_player()[r]) 
+                                                 player.active_game)
+        self.citizens.append(self.player_just_player()[r])
+        context.bot.send_sticker(chat_id=self.player_just_player()[r].user_id,
+                                 sticker="CAACAgQAAxkBAAEBEVFfE0h-Tv7X7WsBAmqTaDiggvB7zAACGwAD1ul3K1Bufqtn71YzGgQ")
+        context.bot.send_message(chat_id=self.player_just_player()[r].user_id, text='Detective')
+
         # Sniper
-        if(len(self.players>6)):
+        if len(self.players) > 6:
             r = random.randrange(0, len(self.player_just_player()))
             self.player_just_player()[r] = Sniper(player.name, player.user_name, player.user_id, player.user_data,
-                           player.active_game) 
+                                                  player.active_game)
             self.citizens.append(self.player_just_player()[r])
+
+            context.bot.send_sticker(chat_id=self.player_just_player()[r].user_id,
+                                     sticker="CAACAgQAAxkBAAEBEVNfE0iiRs6BL7yucCAoP5bH6wLv4QACHwAD1ul3K_8BpWyNZM2OGgQ")
+            context.bot.send_message(chat_id=self.player_just_player()[r].user_id, text='Sniper')
+
         # Citizens
         for i in range(len(self.player_just_player())):
             self.player_just_player[i] = Citizen(player.name, player.user_name, player.user_id, player.user_data,
-                             player.active_game)
+                                                 player.active_game)
             self.citizens.append(self.player_just_player()[i])
+
+            context.bot.send_sticker(chat_id=self.player_just_player()[r].user_id,
+                                     sticker="CAACAgQAAxkBAAEBEVVfE0jFjzsHhOI_TcxxIG2wktMrxwACHAAD1ul3KxBZtykr9BZTGgQ")
+            context.bot.send_message(chat_id=self.player_just_player()[r].user_id, text='Citizen')
 
     def get_citizens(self):
         citizens = []
