@@ -19,11 +19,15 @@ class Game:
                             "Detective": None, "Doctor": None, "Sniper": None}
         self.day_votes = {}
         '''example: {"amirparsa_sal" : {"yes_votes" : ["salinaria","mohokaja"], "no_votes" : [] },
-                                                "salinaria" : {"yes_votes" : ["amirparsa_sal"], "no_votes" : [] 
+                                                "salinaria" : {"yes_votes" : ["amirparsa_sal"], "no_votes" : []
                                                                                                   "}'''
-        self.players = []
+
+        self.rules = {"Godfather": None, "Mafia": [], "Doctor": None,
+                      "Detective": None, "Sniper": None, "Citizen": []}
         self.mafias = []
         self.citizens = []
+        self.players = []
+        self.just_players = []
         self.group_chat_id = group_chat_id
         self.group_data = group_data
         self.is_started = False
@@ -34,13 +38,13 @@ class Game:
         if "active_game" not in user_data.keys():
             user_data["active_game"] = self
             player = Player(user['first_name'],
-                            user['username'], user['id'], user_data)
+                            user['username'], user['id'], user_data, self)
             self.players.append(player)
-            update.message.reply_text(self.get_list())
+            # update.message.reply_text(self.get_list())
             context.bot.send_message(
                 chat_id=user['id'], text="You joined the game successfully")
-            array = []
-            self.votes.update({'@' + player.user_name: array})
+            self.day_votes.update(
+                {player.user_name: {"yes_votes": [], "no_votes": []}})
         else:
             if user_data["active_game"] == self:
                 update.message.reply_text(
@@ -73,14 +77,14 @@ class Game:
         if "active_game" in group_data.keys():
             game = group_data["active_game"]
             if len(game.players) > 2:
-                game.init()
+                game.set_players_rules(context)
                 for player in game.players:
                     context.bot.send_message(
                         chat_id=player.user_id, text=player.rule)
                 context.bot.send_message(
                     chat_id=self.group_chat_id, text='Game has been started!')
                 self.is_started = True
-                self.turn(context)
+                # self.turn(context)
 
             else:
                 context.bot.send_message(chat_id=self.group_chat_id, text='Game is canceled because there is not '
@@ -101,73 +105,76 @@ class Game:
             del player.user_data["active_game"]
         del self.group_data["active_game"]
 
-    def player_just_player(self):
-        player_just_player = []
-        for player in self.players:
-            if type(player) == 'Player':
-                player_just_player.append(player)
-        return player_just_player
+    # def find_in_players(self, player):
+    #     for p in self.players:
+    #         if (p.equals(player)):
+    #             return self.players.index(p)
+    #     return - 1
 
     def set_players_rules(self):
         mafia_number = 1
         # First Mafia
-        r = random.randrange(0, len(self.player_just_player()))
-        self.player_just_player()[r] = Mafia(player.name, player.user_name, player.user_id, player.user_data,
-                                             player.active_game)
-        self.mafias.append(self.player_just_player()[r])
-        self.player_just_player()[r].send_rule(context)
+        r = random.randrange(0, len(self.just_players))
+        index = self.find_in_players(self.just_players[r])
+        self.players[index] = Mafia(self.just_players[r].name, self.just_players[r].user_name, self.just_players[r].user_id, self.just_players[r].user_data,
+                                    self.just_players[r].active_game)
+        self.mafias.append(self.players[index])
+        self.just_players.pop(r)
 
         # GodFather
-        if mafia_number < len(self.players) / 3:
-            r = random.randrange(0, len(self.player_just_player()))
-            self.player_just_player()[r] = GodFather(player.name, player.user_name, player.user_id, player.user_data,
-                                                     player.active_game)
-            self.mafias.append(self.player_just_player()[r])
+        if mafia_number < len(self.players) // 3:
+            r = random.randrange(0, len(self.just_players))
+            index = self.find_in_players(self.just_players[r])
+            self.players[index] = GodFather(self.just_players[r].name, self.just_players[r].user_name, self.just_players[r].user_id, self.just_players[r].user_data,
+                                            self.just_players[r].active_game)
+            self.mafias.append(self.players[index])
             mafia_number = 2
-            self.player_just_player()[r].send_rule(context)
+            self.just_players.pop(r)
 
         # Other Mafias
-        for i in range(int(len(self.players) / 3 - mafia_number)):
-            r = random.randrange(0, len(self.player_just_player()))
-            self.player_just_player()[r] = Mafia(player.name, player.user_name, player.user_id, player.user_data,
-                                                 player.active_game)
-            self.mafias.append(self.player_just_player()[r])
-            self.player_just_player()[r].send_rule(context)
-
+        while(len(self.players) // 3 < mafia_number):
+            r = random.randrange(0, len(self.just_players))
+            index = self.find_in_players(self.just_players[r])
+            self.players[index] = Mafia(self.just_players[r].name, self.just_players[r].user_name, self.just_players[r].user_id, self.just_players[r].user_data,
+                                        self.just_players[r].active_game)
+            self.mafias.append(self.players[index])
+            self.just_players.pop(r)
+            mafia_number += 1
         # Doctor
-        r = random.randrange(0, len(self.player_just_player()))
-        self.player_just_player()[r] = Doctor(player.name, player.user_name, player.user_id, player.user_data,
-                                              player.active_game)
-        self.citizens.append(self.player_just_player()[r])
-        self.player_just_player()[r].send_rule(context)
+        r = random.randrange(0, len(self.just_players))
+        index = self.find_in_players(self.just_players[r])
+        self.players[index] = Doctor(self.just_players[r].name, self.just_players[r].user_name, self.just_players[r].user_id, self.just_players[r].user_data,
+                                     self.just_players[r].active_game)
+        self.citizens.append(self.players[index])
+        self.just_players.pop(r)
 
         # Detective
-        r = random.randrange(0, len(self.player_just_player()))
-        self.player_just_player()[r] = Detective(player.name, player.user_name, player.user_id, player.user_data,
-                                                 player.active_game)
-        self.citizens.append(self.player_just_player()[r])
-        self.player_just_player()[r].send_rule(context)
+        r = random.randrange(0, len(self.just_players))
+        index = self.find_in_players(self.just_players[r])
+        self.players[index] = Detective(self.just_players[r].name, self.just_players[r].user_name, self.just_players[r].user_id, self.just_players[r].user_data,
+                                        self.just_players[r].active_game)
+        self.citizens.append(self.players[index])
+        self.just_players.pop(r)
 
         # Sniper
         if len(self.players) > 6:
-            r = random.randrange(0, len(self.player_just_player()))
-            self.player_just_player()[r] = Sniper(player.name, player.user_name, player.user_id, player.user_data,
-                                                  player.active_game)
-            self.citizens.append(self.player_just_player()[r])
-
-            self.player_just_player()[r].send_rule(context)
+            r = random.randrange(0, len(self.just_players))
+            index = self.find_in_players(self.just_players[r])
+            self.players[index] = Sniper(self.just_players[r].name, self.just_players[r].user_name, self.just_players[r].user_id, self.just_players[r].user_data,
+                                         self.just_players[r].active_game)
+            self.citizens.append(self.players[index])
+            self.just_players.pop(r)
 
         # Citizens
-        for i in range(len(self.player_just_player())):
-            self.player_just_player[i] = Citizen(player.name, player.user_name, player.user_id, player.user_data,
-                                                 player.active_game)
-            self.citizens.append(self.player_just_player()[i])
+        for i in range(len(self.just_players)):
+            index = self.find_in_players(self.just_players[i])
+            self.players[index] = Mafia(self.just_players[i].name, self.just_players[i].user_name, self.just_players[i].user_id, self.just_players[i].user_data,
+                                        self.just_players[i].active_game)
+            self.citizens.append(self.just_players[i])
+            self.just_players.pop(i)
 
-            self.player_just_player()[i].send_rule(context)
+        # for i in range(len(self.players)):
+        #     context.bot.send_sticker(chat_id=self.players[i].user_id,
+        #                              sticker=self.players[i].sticker)
+        # context.bot.send_message(
 
-    def get_citizens(self):
-        citizens = []
-        for player in self.players:
-            if isinstance(player, Citizen):
-                citizens.append(player)
-        return citizens
