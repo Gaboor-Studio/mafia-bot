@@ -1,6 +1,6 @@
 import telegram
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
-from Game import Game
+from Game import Game, GameState
 import requests
 from Poll import Poll
 
@@ -112,25 +112,23 @@ def button(update: telegram.Update, context):
     global the_player
     query = update.callback_query
     game = context.user_data["active_game"]
-    if game.state == "day":
+    if game.state == GameState.Day:
         query.answer()
-        list_vote = game.votes.get('@' + query.from_user['username'])
-        for playeri in game.players:
-            if playeri.user_name == query.from_user['username']:
-                the_player = playeri
         vote = query.data
-        query.edit_message_text(text=f"Your choice: @{vote}")
-        list_vote.append(vote)
-        list_players = game.get_alive_players()
-        for vote_player in list_vote:
-            for alive in list_players:
-                if vote_player == alive.user_name:
-                    list_players.remove(alive)
-        if len(list_players) > 0:
-            poll = Poll("Who do you want to kill?", list_players, the_player)
-            poll.send_poll(context)
-        game.votes.update({'@' + query.from_user['username']: list_vote})
-    elif game.state == "night":
+        print(vote)
+        if vote.equals("YES"):
+            game.day_votes.append('@' + query.from_user['username'])
+        else:
+            game.day_votes.remove('@' + query.from_user['username'])
+        keyboard = []
+        keyboard.append([InlineKeyboardButton("YES", callback_data="YES")])
+        keyboard.append([InlineKeyboardButton("NO", callback_data="NO")])
+        text = "Do you want to kill ?"
+        for voter in game.day_votes:
+            text = text + voter.user_name
+        query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+
+    elif game.state == GameState.Night:
         query.answer()
         list_vote = game.votes.get('@' + query.from_user['username'])
         vote = query.data
