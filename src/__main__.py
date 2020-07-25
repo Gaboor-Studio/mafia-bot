@@ -1,6 +1,7 @@
 import telegram
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from Game import Game, GameState
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import requests
 from Poll import Poll
 
@@ -108,7 +109,7 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
         update.message.reply_text("There is no game in this group!")
 
 
-def button(update: telegram.Update, context):
+def button(update: telegram.Update, context: telegram.ext.CallbackContext):
     global the_player
     query = update.callback_query
     game = context.user_data["active_game"]
@@ -116,16 +117,18 @@ def button(update: telegram.Update, context):
         query.answer()
         vote = query.data
         print(vote)
-        if vote.equals("YES"):
-            game.day_votes.append('@' + query.from_user['username'])
+        if vote == "YES":
+            if '@' + query.from_user['username'] not in game.day_votes:
+                game.day_votes.append('@' + query.from_user['username'])
         else:
-            game.day_votes.remove('@' + query.from_user['username'])
+            if '@' + query.from_user['username'] in game.day_votes:
+                game.day_votes.remove('@' + query.from_user['username'])
         keyboard = []
         keyboard.append([InlineKeyboardButton("YES", callback_data="YES")])
         keyboard.append([InlineKeyboardButton("NO", callback_data="NO")])
-        text = "Do you want to kill ?"
+        text = ""
         for voter in game.day_votes:
-            text = text + voter.user_name
+            text = text + voter + "\n"
         query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif game.state == GameState.Night:

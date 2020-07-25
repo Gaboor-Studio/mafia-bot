@@ -159,10 +159,48 @@ class Game:
     def day(self, context: telegram.ext.CallbackContext):
         self.state = GameState.Day
         for player in self.get_alive_players():
-            context.job_queue.run_once(player.talk(self.group_chat_id, context), 5, context)
+            player.talk(self.group_chat_id, context)
+            time.sleep(5)
+        count = 0
+        kill_players = []
         for player in self.get_alive_players():
-            poll = Poll("Do you want to kill " + "@" + player.user_name + " ?", ["YES", "NO"],
+            context.bot.send_message(chat_id=self.group_chat_id,
+                                     text="Do you want to kill " + "@" + player.user_name + " ?")
+            poll = Poll("Nobody voted yet!", ["YES", "NO"],
                         self.group_chat_id)
             poll.send_poll(context)
             context.bot.send_message(chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
-            context.job_queue.run_once(self.show_result, 15, context)
+            time.sleep(15)
+            if len(self.day_votes) > count:
+                count = len(self.day_votes)
+                kill_players.clear()
+                kill_players.append(player)
+            elif len(self.day_votes) == count:
+                kill_players.append(player)
+            self.day_votes.clear()
+        if len(kill_players) > 1:
+            for player in kill_players:
+                player.talk(self.group_chat_id, context)
+                time.sleep(5)
+            for player in kill_players:
+                context.bot.send_message(chat_id=self.group_chat_id,
+                                         text="Do you want to kill " + "@" + player.user_name + " ?")
+                poll = Poll("Nobody voted yet!", ["YES", "NO"],
+                            self.group_chat_id)
+                poll.send_poll(context)
+                context.bot.send_message(chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
+                time.sleep(15)
+
+                if len(self.day_votes) > count:
+                    count = len(self.day_votes)
+                    kill_players.clear()
+                    kill_players.append(player)
+                elif len(self.day_votes) == count:
+                    kill_players.append(player)
+                self.day_votes.clear()
+            if len(kill_players) > 1:
+                context.bot.send_message(chat_id=self.group_chat_id, text="Nobody kills today")
+            else:
+                context.bot.send_message(chat_id=self.group_chat_id, text="@" + kill_players[0].user_name + " killed")
+        else:
+            context.bot.send_message(chat_id=self.group_chat_id, text="@" + kill_players[0].user_name + " killed")

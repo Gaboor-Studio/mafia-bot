@@ -31,4 +31,6 @@ class Poll:
     def init_keyboard(self):
         for vote in self.votes_list:
             self.keyboard.append([InlineKeyboardButton(vote, callback_data=vote)])
-            self.reply_markup = InlineKeyboardMarkup(self.keyboard)
+        self.reply_markup = InlineKeyboardMarkup(self.keyboard)
+    def sicktir_poll(self,context: telegram.ext.CallbackContext):
+        context.bot.edit_message_text()
