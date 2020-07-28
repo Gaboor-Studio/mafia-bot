@@ -119,9 +119,10 @@ class Game:
             r = random.randrange(0, len(self.just_players))
             self.just_players[r].rule = Rules.GodFather
             self.mafias.append(self.just_players[r])
-            self.just_players[r].send_rule(context)
             self.just_players.pop(r)
             mafia_number = mafia_number + 1
+            self.just_players[r].mafia_rank = mafia_number
+            self.just_players[r].send_rule(context)
         # Other Mafias
         for i in range(int(len(self.players) / 3) - mafia_number):
             r = random.randrange(0, len(self.just_players))
@@ -129,6 +130,8 @@ class Game:
             self.mafias.append(self.just_players[r])
             self.just_players[r].send_rule(context)
             self.just_players.pop(r)
+            mafia_number = mafia_number + 1
+            self.just_players[r].mafia_rank = mafia_number
         # Doctor
         r = random.randrange(0, len(self.just_players))
         self.just_players[r].rule = Rules.Doctor
@@ -204,3 +207,20 @@ class Game:
                 context.bot.send_message(chat_id=self.group_chat_id, text="@" + kill_players[0].user_name + " killed")
         else:
             context.bot.send_message(chat_id=self.group_chat_id, text="@" + kill_players[0].user_name + " killed")
+
+    def night(self, context: telegram.ext.CallbackContext):
+        context.bot.send_message(chat_id=self.group_chat_id, text="30 seconds left from night")
+        for player in self.get_alive_players():
+            if player.mafia_rank == 1:
+                poll = Poll("Who do you want to kill😈?", self.get_alive_players(), player.user_id)
+                poll.send_poll(context)
+            elif player.rule == Rules.Sniper:
+                poll = Poll("Who do you want to snipe😈?", self.get_alive_players(), player.user_id)
+                poll.send_poll(context)
+            elif player.rule == Rules.Detective:
+                poll = Poll("Who do you want to doubt🕵️?", self.get_alive_players(), player.user_id)
+                poll.send_poll(context)
+            elif player.rule == Rules.Doctor:
+                poll = Poll("Who do you want to save👨‍?", self.get_alive_players(), player.user_id)
+                poll.send_poll(context)
+        time.sleep(30)
