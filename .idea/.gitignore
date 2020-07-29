@@ -1,4 +1,4 @@
 inspectionProfiles
 *.iml
 *.xml
-venv
+venv/
