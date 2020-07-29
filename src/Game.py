@@ -1,6 +1,6 @@
 import telegram
 import random
-from Player import Player, Rules
+from Player import Player, Roles
 from telegram.ext import Updater
 from Poll import Poll
 import time
@@ -117,46 +117,46 @@ class Game:
         # GodFather
         if len(self.players) >= 6:
             r = random.randrange(0, len(self.just_players))
-            self.just_players[r].rule = Rules.GodFather
+            self.just_players[r].rule = Roles.GodFather
             self.mafias.append(self.just_players[r])
             self.just_players.pop(r)
             mafia_number = mafia_number + 1
             self.just_players[r].mafia_rank = mafia_number
-            self.just_players[r].send_rule(context)
+            self.just_players[r].send_role(context)
         # Other Mafias
         for i in range(int(len(self.players) / 3) - mafia_number):
             r = random.randrange(0, len(self.just_players))
-            self.just_players[r].rule = Rules.Mafia
+            self.just_players[r].rule = Roles.Mafia
             self.mafias.append(self.just_players[r])
-            self.just_players[r].send_rule(context)
+            self.just_players[r].send_role(context)
             self.just_players.pop(r)
             mafia_number = mafia_number + 1
             self.just_players[r].mafia_rank = mafia_number
         # Doctor
         r = random.randrange(0, len(self.just_players))
-        self.just_players[r].rule = Rules.Doctor
+        self.just_players[r].rule = Roles.Doctor
         self.citizens.append(self.just_players[r])
-        self.just_players[r].send_rule(context)
+        self.just_players[r].send_role(context)
         self.just_players.pop(r)
         # Detective
         r = random.randrange(0, len(self.just_players))
-        self.just_players[r].rule = Rules.Detective
+        self.just_players[r].rule = Roles.Detective
         self.citizens.append(self.just_players[r])
-        self.just_players[r].send_rule(context)
+        self.just_players[r].send_role(context)
         self.just_players.pop(r)
         # Sniper
         if len(self.players) > 6:
             r = random.randrange(0, len(self.just_players))
-            self.just_players[r].rule = Rules.Sniper
+            self.just_players[r].rule = Roles.Sniper
             self.citizens.append(self.just_players[r])
-            self.just_players[r].send_rule(context)
+            self.just_players[r].send_role(context)
             self.just_players.pop(r)
         # Citizens
         for player in self.just_players:
             print(len(self.just_players))
-            player.rule = Rules.Citizen
+            player.rule = Roles.Citizen
             self.citizens.append(player)
-            player.send_rule(context)
+            player.send_role(context)
             self.just_players.remove(player)
 
     def day(self, context: telegram.ext.CallbackContext):
@@ -214,13 +214,13 @@ class Game:
             if player.mafia_rank == 1:
                 poll = Poll("Who do you want to kill😈?", self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
-            elif player.rule == Rules.Sniper:
+            elif player.rule == Roles.Sniper:
                 poll = Poll("Who do you want to snipe😈?", self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
-            elif player.rule == Rules.Detective:
+            elif player.rule == Roles.Detective:
                 poll = Poll("Who do you want to doubt🕵️?", self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
-            elif player.rule == Rules.Doctor:
+            elif player.rule == Roles.Doctor:
                 poll = Poll("Who do you want to save👨‍?", self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
         time.sleep(30)
