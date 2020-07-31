@@ -34,7 +34,7 @@ class Player:
         self.is_alive = True
         self.emoji = None
         self.sticker = None
-        self.rule = None
+        self.role = None
         self.mafia_rank = 0
 
     def equals(self, player):
@@ -45,24 +45,24 @@ class Player:
                                  text='@' + self.user_name + " turn to talk")
 
     def send_role(self, context: telegram.ext.CallbackContext):
-        if self.rule == Roles.Citizen:
+        if self.role == Roles.Citizen:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEVVfE0jFjzsHhOI_TcxxIG2wktMrxwACHAAD1ul3KxBZtykr9BZTGgQ")
-        elif self.rule == Roles.GodFather:
+        elif self.role == Roles.GodFather:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEU1fE0eH9cuSbcnfD4DR2x7R2dk4pwACGgAD1ul3K6tFV61NP-r5GgQ")
             context.bot.send_message(chat_id=self.user_id, text="Your mafia rank :" + str(self.mafia_rank))
-        elif self.rule == Roles.Mafia:
+        elif self.role == Roles.Mafia:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEUtfE0dFaAz9MUL8D5wg6Na2-YnQwwACHQAD1ul3K-J4YMXfsX4oGgQ")
             context.bot.send_message(chat_id=self.user_id, text="Your mafia rank :" + str(self.mafia_rank))
-        elif self.rule == Roles.Detective:
+        elif self.role == Roles.Detective:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEVFfE0h-Tv7X7WsBAmqTaDiggvB7zAACGwAD1ul3K1Bufqtn71YzGgQ")
-        elif self.rule == Roles.Doctor:
+        elif self.role == Roles.Doctor:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEU9fE0go967QwvK8s_sqY4js15WHWgACHgAD1ul3K_mMfTHPD6mEGgQ")
-        elif self.rule == Roles.Sniper:
+        elif self.role == Roles.Sniper:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEVNfE0iiRs6BL7yucCAoP5bH6wLv4QACHwAD1ul3K_8BpWyNZM2OGgQ")
-        context.bot.send_message(chat_id=self.user_id, text=self.rule.name)
+        context.bot.send_message(chat_id=self.user_id, text=self.role.name)

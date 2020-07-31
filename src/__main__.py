@@ -3,6 +3,8 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from Game import Game, GameState
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import requests
+
+from Player import Player
 from Poll import Poll
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
@@ -49,6 +51,8 @@ def just_for_pv(func):
 def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_id = update.effective_chat.id
     group_data = context.chat_data
+    user = update.message.from_user
+    user_data = context.user_data
     if "active_game" not in group_data.keys():
         game = Game(group_id, group_data)
         group_data["active_game"] = game
@@ -57,6 +61,7 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
         context.bot.send_sticker(chat_id=game.group_chat_id,
                                  sticker="CAACAgQAAxkBAAEBEGZfEajfE4ubecspTvk_h_MmLWldhwACFwAD1ul3K_CgFM5dUHoRGgQ")
         update.message.reply_text("New game started")
+        game.join_game(user, user_data, update, context)
     else:
         update.message.reply_text("This group has an unfinished game!")
 

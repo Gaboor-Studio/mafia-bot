@@ -29,7 +29,7 @@ class Game:
         self.state = GameState.Day
 
     def get_list(self):
-        list_join = ""
+        list_join = "Players:\n"
         for player in self.players:
             list_join += f"[{player.name}](tg://user?id={player.user_id})" + "\n"
 
@@ -39,8 +39,7 @@ class Game:
                   update: telegram.Update, context: telegram.ext.CallbackContext):
         if "active_game" not in user_data.keys():
             user_data["active_game"] = self
-            player = Player(user['first_name'],
-                            user['username'], user['id'], user_data, self)
+            player = Player(user.full_name, user.username, user.id, user_data, self)
             self.players.append(player)
             self.just_players.append(player)
             update.message.reply_markdown(self.get_list())
@@ -87,7 +86,7 @@ class Game:
         if "active_game" in group_data.keys():
             game = group_data["active_game"]
             if len(game.players) > 2:
-                game.set_players_rules(context)
+                game.set_players_roles(context)
                 context.bot.send_message(
                     chat_id=self.group_chat_id, text='Game has been started!')
                 self.is_started = True
@@ -112,12 +111,12 @@ class Game:
         del self.group_data["active_game"]
         self.just_players.clear()
 
-    def set_players_rules(self, context: telegram.ext.CallbackContext):
+    def set_players_roles(self, context: telegram.ext.CallbackContext):
         mafia_number = 0
         # GodFather
         if len(self.players) >= 6:
             r = random.randrange(0, len(self.just_players))
-            self.just_players[r].rule = Roles.GodFather
+            self.just_players[r].role = Roles.GodFather
             self.mafias.append(self.just_players[r])
             self.just_players.pop(r)
             mafia_number = mafia_number + 1
@@ -126,7 +125,7 @@ class Game:
         # Other Mafias
         for i in range(int(len(self.players) / 3) - mafia_number):
             r = random.randrange(0, len(self.just_players))
-            self.just_players[r].rule = Roles.Mafia
+            self.just_players[r].role = Roles.Mafia
             self.mafias.append(self.just_players[r])
             self.just_players[r].send_role(context)
             self.just_players.pop(r)
@@ -134,27 +133,27 @@ class Game:
             self.just_players[r].mafia_rank = mafia_number
         # Doctor
         r = random.randrange(0, len(self.just_players))
-        self.just_players[r].rule = Roles.Doctor
+        self.just_players[r].role = Roles.Doctor
         self.citizens.append(self.just_players[r])
         self.just_players[r].send_role(context)
         self.just_players.pop(r)
         # Detective
         r = random.randrange(0, len(self.just_players))
-        self.just_players[r].rule = Roles.Detective
+        self.just_players[r].role = Roles.Detective
         self.citizens.append(self.just_players[r])
         self.just_players[r].send_role(context)
         self.just_players.pop(r)
         # Sniper
         if len(self.players) > 6:
             r = random.randrange(0, len(self.just_players))
-            self.just_players[r].rule = Roles.Sniper
+            self.just_players[r].role = Roles.Sniper
             self.citizens.append(self.just_players[r])
             self.just_players[r].send_role(context)
             self.just_players.pop(r)
         # Citizens
         for player in self.just_players:
             print(len(self.just_players))
-            player.rule = Roles.Citizen
+            player.role = Roles.Citizen
             self.citizens.append(player)
             player.send_role(context)
             self.just_players.remove(player)
@@ -221,15 +220,15 @@ class Game:
                 poll = Poll("Who do you want to kill😈?",
                             self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
-            elif player.rule == Roles.Sniper:
+            elif player.role == Roles.Sniper:
                 poll = Poll("Who do you want to snipe😈?",
                             self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
-            elif player.rule == Roles.Detective:
+            elif player.role == Roles.Detective:
                 poll = Poll("Who do you want to doubt🕵️?",
                             self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
-            elif player.rule == Roles.Doctor:
+            elif player.role == Roles.Doctor:
                 poll = Poll("Who do you want to save👨‍?",
                             self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
