@@ -31,7 +31,7 @@ class Game:
     def get_list(self):
         list_join = ""
         for player in self.players:
-            list_join = list_join + "@" + player.user_name + "\n"
+            list_join += f"[{player.name}](tg://user?id={player.user_id})" + "\n"
 
         return list_join
 
@@ -43,7 +43,7 @@ class Game:
                             user['username'], user['id'], user_data, self)
             self.players.append(player)
             self.just_players.append(player)
-            update.message.reply_text(self.get_list())
+            update.message.reply_markdown(self.get_list())
 
             context.bot.send_message(
                 chat_id=user['id'], text="You joined the game successfully")
@@ -172,7 +172,8 @@ class Game:
             poll = Poll("Nobody voted yet!", ["YES", "NO"],
                         self.group_chat_id)
             poll.send_poll(context)
-            context.bot.send_message(chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
+            context.bot.send_message(
+                chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
             time.sleep(15)
             if len(self.day_votes) > count:
                 count = len(self.day_votes)
@@ -191,7 +192,8 @@ class Game:
                 poll = Poll("Nobody voted yet!", ["YES", "NO"],
                             self.group_chat_id)
                 poll.send_poll(context)
-                context.bot.send_message(chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
+                context.bot.send_message(
+                    chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
                 time.sleep(15)
 
                 if len(self.day_votes) > count:
@@ -202,25 +204,33 @@ class Game:
                     kill_players.append(player)
                 self.day_votes.clear()
             if len(kill_players) > 1:
-                context.bot.send_message(chat_id=self.group_chat_id, text="Nobody kills today")
+                context.bot.send_message(
+                    chat_id=self.group_chat_id, text="Nobody kills today")
             else:
-                context.bot.send_message(chat_id=self.group_chat_id, text="@" + kill_players[0].user_name + " killed")
+                context.bot.send_message(
+                    chat_id=self.group_chat_id, text="@" + kill_players[0].user_name + " killed")
         else:
-            context.bot.send_message(chat_id=self.group_chat_id, text="@" + kill_players[0].user_name + " killed")
+            context.bot.send_message(
+                chat_id=self.group_chat_id, text="@" + kill_players[0].user_name + " killed")
 
     def night(self, context: telegram.ext.CallbackContext):
-        context.bot.send_message(chat_id=self.group_chat_id, text="30 seconds left from night")
+        context.bot.send_message(
+            chat_id=self.group_chat_id, text="30 seconds left from night")
         for player in self.get_alive_players():
             if player.mafia_rank == 1:
-                poll = Poll("Who do you want to kill😈?", self.get_alive_players(), player.user_id)
+                poll = Poll("Who do you want to kill😈?",
+                            self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
             elif player.rule == Roles.Sniper:
-                poll = Poll("Who do you want to snipe😈?", self.get_alive_players(), player.user_id)
+                poll = Poll("Who do you want to snipe😈?",
+                            self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
             elif player.rule == Roles.Detective:
-                poll = Poll("Who do you want to doubt🕵️?", self.get_alive_players(), player.user_id)
+                poll = Poll("Who do you want to doubt🕵️?",
+                            self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
             elif player.rule == Roles.Doctor:
-                poll = Poll("Who do you want to save👨‍?", self.get_alive_players(), player.user_id)
+                poll = Poll("Who do you want to save👨‍?",
+                            self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
         time.sleep(30)
