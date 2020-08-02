@@ -81,6 +81,17 @@ class Game:
                 alive.append(player)
         return alive
 
+    '''
+    Examples:
+    salinaria
+    id without @
+    '''
+
+    def get_player_by_id(self, username):
+        for player in self.get_alive_players():
+            if player.user_name == username:
+                return player
+
     def start_game(self, context: telegram.ext.CallbackContext):
         group_data = self.group_data
         if "active_game" in group_data.keys():
@@ -233,3 +244,4 @@ class Game:
                             self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
         time.sleep(30)
+

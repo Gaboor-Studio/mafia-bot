@@ -4,7 +4,7 @@ from Game import Game, GameState
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import requests
 
-from Player import Player
+from Player import Player, Roles
 from Poll import Poll
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
@@ -138,11 +138,17 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
 
     elif game.state == GameState.Night:
         query.answer()
-        list_vote = game.votes.get('@' + query.from_user['username'])
         vote = query.data
+        player = game.get_player_by_id(query.from_user['username'])
+        if player.mafia_rank == 1:
+            game.night_votes.update({"Mafia_shot": vote})
+        elif player.role == Roles.Sniper:
+            game.night_votes.update({"Sniper": vote})
+        elif player.role == Roles.Detective:
+            game.night_votes.update({"Detective": vote})
+        elif player.role == Roles.Doctor:
+            game.night_votes.update({"Doctor": vote})
         query.edit_message_text(text=f"Your choice: @{vote}")
-        list_vote.append(vote)
-        game.votes.update({'@' + query.from_user['username']: list_vote})
 
 
 dispatcher = updater.dispatcher
