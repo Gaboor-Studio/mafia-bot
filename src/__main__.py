@@ -121,7 +121,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
     if game.state == GameState.Day:
         query.answer()
         vote = query.data
-        print(vote)
+        print(query.from_user)
         if vote == "YES":
             if '@' + query.from_user['username'] not in game.day_votes:
                 game.day_votes.append('@' + query.from_user['username'])
@@ -139,7 +139,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
     elif game.state == GameState.Night:
         query.answer()
         vote = query.data
-        player = game.get_player_by_id(query.from_user['username'])
+        player = game.get_player_by_id(query.from_user['id'])
         if player.mafia_rank == 1:
             game.night_votes.update({"Mafia_shot": vote})
         elif player.role == Roles.Sniper:

@@ -42,7 +42,8 @@ class Player:
 
     def talk(self, group_chat_id, context: telegram.ext.CallbackContext):
         context.bot.send_message(chat_id=group_chat_id,
-                                 text='@' + self.user_name + " turn to talk")
+                                 text=f"[{self.name}](tg://user?id={self.user_id})" + "'s turn to talk",
+                                 parse_mode='MarkdownV2')
 
     def send_role(self, context: telegram.ext.CallbackContext):
         if self.role == Roles.Citizen:

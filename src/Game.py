@@ -48,13 +48,11 @@ class Game:
                 chat_id=user['id'], text="You joined the game successfully")
         else:
             if user_data["active_game"] == self:
-                update.message.reply_text(
-                    '@' + user['username'] + " has already joined the game!")
+                update.message.reply_text("You have already joined the game!")
                 context.bot.send_message(
                     chat_id=user['id'], text="You have already joined the game")
             else:
-                update.message.reply_text(
-                    '@' + user['username'] + " has already joined a game in another group!")
+                update.message.reply_text("You have already joined a game in another group!")
                 context.bot.send_message(
                     chat_id=user['id'], text="You have already joined a game in another group")
 
@@ -63,12 +61,11 @@ class Game:
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
                 del user_data["active_game"]
-                player = self.get_player_by_user(user)
-                del self.votes['@' + player.user_name]
+                player = self.get_player_by_id(user.id)
+                # del self.votes['@' + player.user_name]
                 self.players.remove(player)
                 self.just_players.remove(player)
-                update.message.reply_text(
-                    '@' + player.user_name + " successfully left the game!")
+                update.message.reply_text("You left the game successfully!")
             else:
                 update.message.reply_text("You are not in this game!")
         else:
@@ -81,15 +78,9 @@ class Game:
                 alive.append(player)
         return alive
 
-    '''
-    Examples:
-    salinaria
-    id without @
-    '''
-
-    def get_player_by_id(self, username):
+    def get_player_by_id(self, id):
         for player in self.get_alive_players():
-            if player.user_name == username:
+            if player.user_id == id:
                 return player
 
     def start_game(self, context: telegram.ext.CallbackContext):
@@ -244,4 +235,3 @@ class Game:
                             self.get_alive_players(), player.user_id)
                 poll.send_poll(context)
         time.sleep(30)
-
