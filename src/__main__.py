@@ -122,19 +122,18 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
     if game.state == GameState.Day:
         query.answer()
         vote = query.data
-        print(query.from_user)
         if vote == "YES":
             if query.from_user['username'] not in game.voters:
                 game.voters.append(query.from_user['username'])
-        keyboard = []
-        keyboard.append([InlineKeyboardButton("YES", callback_data="YES")])
-        keyboard.append([InlineKeyboardButton("NO", callback_data="NO")])
-        text = "Voters:\n"
-        for voter in game.voters:
-            text += game.get_player_by_username(
-                voter).get_markdown_call() + "\n"
-        query.edit_message_text(
-            text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="MarkdownV2")
+                keyboard = []
+                keyboard.append([InlineKeyboardButton("YES", callback_data="YES")])
+                keyboard.append([InlineKeyboardButton("NO", callback_data="NO")])
+                text = "Voters:\n"
+                for voter in game.voters:
+                    text += game.get_player_by_username(
+                        voter).get_markdown_call() + "\n"
+                query.edit_message_text(
+                    text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="MarkdownV2")
 
     elif game.state == GameState.Night:
         query.answer()
@@ -148,7 +147,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
             game.night_votes.update({"Detective": vote})
         elif player.role == Roles.Doctor:
             game.night_votes.update({"Doctor": vote})
-        query.edit_message_text(text=f"Your choice: @{vote}")
+        query.edit_message_text(text="Your choice:" + vote)
 
 
 dispatcher = updater.dispatcher
