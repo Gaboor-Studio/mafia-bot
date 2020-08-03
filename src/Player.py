@@ -42,8 +42,11 @@ class Player:
 
     def talk(self, group_chat_id, context: telegram.ext.CallbackContext):
         context.bot.send_message(chat_id=group_chat_id,
-                                 text=f"[{self.name}](tg://user?id={self.user_id})" + "'s turn to talk",
+                                 text=self.get_markdown_call() + "'s turn to talk",
                                  parse_mode='MarkdownV2')
+
+    def get_markdown_call(self):
+        return f"[{self.name}](tg://user?id={self.user_id})"
 
     def send_role(self, context: telegram.ext.CallbackContext):
         if self.role == Roles.Citizen:
@@ -52,11 +55,13 @@ class Player:
         elif self.role == Roles.GodFather:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEU1fE0eH9cuSbcnfD4DR2x7R2dk4pwACGgAD1ul3K6tFV61NP-r5GgQ")
-            context.bot.send_message(chat_id=self.user_id, text="Your mafia rank :" + str(self.mafia_rank))
+            context.bot.send_message(
+                chat_id=self.user_id, text="Your mafia rank :" + str(self.mafia_rank))
         elif self.role == Roles.Mafia:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEUtfE0dFaAz9MUL8D5wg6Na2-YnQwwACHQAD1ul3K-J4YMXfsX4oGgQ")
-            context.bot.send_message(chat_id=self.user_id, text="Your mafia rank :" + str(self.mafia_rank))
+            context.bot.send_message(
+                chat_id=self.user_id, text="Your mafia rank :" + str(self.mafia_rank))
         elif self.role == Roles.Detective:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEVFfE0h-Tv7X7WsBAmqTaDiggvB7zAACGwAD1ul3K1Bufqtn71YzGgQ")

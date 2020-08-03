@@ -22,7 +22,8 @@ def admin_permission(func):
         if role == 'creator' or role == 'administrator':
             func(update, context)
         else:
-            update.message.reply_text("You dont have admin permission to run this command!")
+            update.message.reply_text(
+                "You dont have admin permission to run this command!")
 
     return wrapper_func
 
@@ -86,7 +87,8 @@ def join(update: telegram.Update, context: telegram.ext.CallbackContext):
             group_game = group_data["active_game"]
             group_game.join_game(user, user_data, update, context)
         else:
-            update.message.reply_text("Please start the bot in private chat and try again!")
+            update.message.reply_text(
+                "Please start the bot in private chat and try again!")
     else:
         update.message.reply_text("There is no game in this group!")
 
@@ -115,7 +117,6 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 
 
 def button(update: telegram.Update, context: telegram.ext.CallbackContext):
-    global the_player
     query = update.callback_query
     game = context.user_data["active_game"]
     if game.state == GameState.Day:
@@ -123,18 +124,17 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
         vote = query.data
         print(query.from_user)
         if vote == "YES":
-            if '@' + query.from_user['username'] not in game.day_votes:
-                game.day_votes.append('@' + query.from_user['username'])
-        else:
-            if '@' + query.from_user['username'] in game.day_votes:
-                game.day_votes.remove('@' + query.from_user['username'])
+            if query.from_user['username'] not in game.voters:
+                game.voters.append(query.from_user['username'])
         keyboard = []
         keyboard.append([InlineKeyboardButton("YES", callback_data="YES")])
         keyboard.append([InlineKeyboardButton("NO", callback_data="NO")])
-        text = ""
-        for voter in game.day_votes:
-            text = text + voter + "\n"
-        query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
+        text = "Voters:\n"
+        for voter in game.voters:
+            text += game.get_player_by_username(
+                voter).get_markdown_call() + "\n"
+        query.edit_message_text(
+            text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="MarkdownV2")
 
     elif game.state == GameState.Night:
         query.answer()
