@@ -276,25 +276,25 @@ class Game:
         sniper_kill = False
         detective_guess = False
 
-        if self.night_votes.get("Mafia_shot") != None and self.night_votes.get(
-                "Doctor") != None and self.night_votes.get("Mafia_shot") == self.night_votes.get("Doctor"):
+        if self.night_votes.get("Mafia_shot") is not None and self.night_votes.get(
+                "Doctor") is not None and self.night_votes.get("Mafia_shot") == self.night_votes.get("Doctor"):
             mafia_kill = False
-        if self.get_player_by_name(self.night_votes.get("Detective")) != None and self.get_player_by_name(
+        if self.get_player_by_name(self.night_votes.get("Detective")) is not None and self.get_player_by_name(
                 self.night_votes.get("Detective")).role == Roles.Mafia:
             detective_guess = True
-        if self.get_player_by_name(self.night_votes.get("Sniper")) != None and (self.get_player_by_name(
+        if self.get_player_by_name(self.night_votes.get("Sniper")) is not None and (self.get_player_by_name(
                 self.night_votes.get("Sniper")).role == Roles.Mafia or self.get_player_by_name(
             self.night_votes.get("Sniper")).role == Roles.GodFather):
             sniper_kill = True
 
-        if mafia_kill and self.night_votes.get("Mafia_shot") != None:
+        if mafia_kill and self.night_votes.get("Mafia_shot") is not None:
             context.bot.send_message(
                 chat_id=self.group_chat_id, text=self.night_votes.get("Mafia_shot") + " died last night!!")
         else:
             context.bot.send_message(
                 chat_id=self.group_chat_id, text="Nobody died last night!!")
 
-        if sniper_kill and self.night_votes.get("Sniper") != None:
+        if sniper_kill and self.night_votes.get("Sniper") is not None:
             context.bot.send_message(
                 chat_id=self.group_chat_id, text=self.night_votes.get("Sniper") + " died last night!!")
         else:
@@ -334,3 +334,36 @@ class Game:
                 poll.send_poll(context)
         time.sleep(30)
         self.night_result(context)
+
+    def print_roles(self, context: telegram.ext.CallbackContext):
+        text = ""
+        for player in self.players:
+            text = text + player.name + player.role.name + "\n"
+        context.bot.send_message(
+            chat_id=self.group_chat_id, text=text, parse_mode="MarkdownV2")
+
+    def result_game(self, context: telegram.ext.CallbackContext):
+        mafias = 0
+        citizens = 0
+        for player in self.get_alive_players():
+            if player.role == Roles.GodFather or player.role == Roles.Mafia:
+                mafias += 1
+            else:
+                citizens += 1
+
+        if mafias >= citizens:
+            context.bot.send_sticker(chat_id=self.group_chat_id,
+                                     sticker="CAACAgQAAxkBAAEBEGpfEajpXdMaTTseiJvWttCJFXbtwwACGQAD1ul3K3z-LuYH7F5fGgQ")
+            context.bot.send_message(
+                chat_id=self.group_chat_id, text="Mafia win!")
+            self.print_roles(context)
+            return False
+        elif mafias == 0:
+            context.bot.send_sticker(chat_id=self.group_chat_id,
+                                     sticker="CAACAgQAAxkBAAEBEGhfEajlbVPbMEesXXrgq4wOe-5eBAACGAAD1ul3K4WFHtFPPfm2GgQ")
+            context.bot.send_message(
+                chat_id=self.group_chat_id, text="City win!")
+            self.print_roles(context)
+            return False
+        else:
+            return True
