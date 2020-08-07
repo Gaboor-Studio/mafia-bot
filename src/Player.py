@@ -42,7 +42,7 @@ class Player:
 
     def talk(self, group_chat_id, context: telegram.ext.CallbackContext):
         context.bot.send_message(chat_id=group_chat_id,
-                                 text=self.get_markdown_call() + "'s turn to talk",
+                                 text=self.get_markdown_call() + "'s turn to talk 🗣",
                                  parse_mode='MarkdownV2')
 
     def get_markdown_call(self):
@@ -71,4 +71,4 @@ class Player:
         elif self.role == Roles.Sniper:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEVNfE0iiRs6BL7yucCAoP5bH6wLv4QACHwAD1ul3K_8BpWyNZM2OGgQ")
-        context.bot.send_message(chat_id=self.user_id, text=self.role.name)
+        context.bot.send_message(chat_id=self.user_id, text=self.role.name + self.emoji)
