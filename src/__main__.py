@@ -14,6 +14,14 @@ updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
 
 
+def has_subscribed(user_id, chat_title):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    params = {'chat_id': user_id,
+              'text': f"Analyzing your request to join the mafia game in group {chat_title}"}
+    r = requests.get(url=url, params=params)
+    return r.json()['ok']
+
+
 def admin_permission(func):
     def wrapper_func(update, context):
         group_id = update.effective_chat.id
@@ -55,14 +63,18 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
     user_data = context.user_data
     if "active_game" not in group_data.keys():
-        game = Game(group_id, group_data)
-        group_data["active_game"] = game
-        context.job_queue.run_once(game.start_game, 60, context=(update.message.chat_id, context.chat_data),
-                                   name=group_id)
-        context.bot.send_sticker(chat_id=game.group_chat_id,
-                                 sticker="CAACAgQAAxkBAAEBEGZfEajfE4ubecspTvk_h_MmLWldhwACFwAD1ul3K_CgFM5dUHoRGgQ")
-        update.message.reply_text("New game started")
-        game.join_game(user, user_data, update, context)
+        if has_subscribed(user['id'], update.effective_chat['title']):
+            game = Game(group_id, group_data)
+            group_data["active_game"] = game
+            context.job_queue.run_once(game.start_game, 60, context=(update.message.chat_id, context.chat_data),
+                                       name=group_id)
+            context.bot.send_sticker(chat_id=game.group_chat_id,
+                                     sticker="CAACAgQAAxkBAAEBEGZfEajfE4ubecspTvk_h_MmLWldhwACFwAD1ul3K_CgFM5dUHoRGgQ")
+            update.message.reply_text("New game started")
+            game.join_game(user, user_data, update, context)
+        else:
+            update.message.reply_text(
+                "Please start the bot in private chat and try again!")
     else:
         update.message.reply_text("This group has an unfinished game!")
 
@@ -77,15 +89,16 @@ def join(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
     group_data = context.chat_data
     user_data = context.user_data
+    user = update.message.from_user
     if "active_game" in group_data.keys():
-        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-        params = {'chat_id': user['id'],
-                  'text': f"Analyzing your request to join the mafia game in group {update.effective_chat['title']}"}
-        r = requests.get(url=url, params=params)
-        has_subscribed = r.json()['ok']
-        if has_subscribed:
+
+        if has_subscribed(user['id'], update.effective_chat['title']):
             group_game = group_data["active_game"]
-            group_game.join_game(user, user_data, update, context)
+            if not group_game.is_started:
+                group_game.join_game(user, user_data, update, context)
+            else:
+                update.message.reply_text(
+                    "The game has started so you can't join the game!")
         else:
             update.message.reply_text(
                 "Please start the bot in private chat and try again!")
@@ -100,7 +113,11 @@ def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
     user_data = context.user_data
     if "active_game" in group_data.keys():
         group_game = group_data["active_game"]
-        group_game.leave_game(user, user_data, update)
+        if not group_game.is_started:
+            group_game.leave_game(user, user_data, update)
+        else:
+            update.message.reply_text(
+                "The game has started so you can't leave the game!")
     else:
         update.message.reply_text("There is no game in this group!")
 
@@ -123,17 +140,25 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
         query.answer()
         vote = query.data
         if vote == "YES":
-            if query.from_user['username'] not in game.voters:
-                game.voters.append(query.from_user['username'])
-                keyboard = []
-                keyboard.append([InlineKeyboardButton("YES", callback_data="YES")])
-                keyboard.append([InlineKeyboardButton("NO", callback_data="NO")])
-                text = "Voters:\n"
-                for voter in game.voters:
-                    text += game.get_player_by_username(
-                        voter).get_markdown_call() + "\n"
-                query.edit_message_text(
-                    text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="MarkdownV2")
+            game.voters[query.from_user['username']] = "YES"
+        else:
+            game.voters[query.from_user['username']] = "NO"
+        keyboard = []
+        keyboard.append(
+            [InlineKeyboardButton("YES", callback_data="YES")])
+        keyboard.append(
+            [InlineKeyboardButton("NO", callback_data="NO")])
+        text = query.message.text_markdown
+        lines = text.splitlines(True)
+        text = lines[0] + lines[1]
+        if text[-1] == '\n':
+            text = text[:-1]
+        for username in game.voters.keys():
+            p = game.get_player_by_username(username)
+            text += "  \n" + p.get_markdown_call()
+
+        query.edit_message_text(
+            text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="MarkdownV2")
 
     elif game.state == GameState.Night:
         query.answer()

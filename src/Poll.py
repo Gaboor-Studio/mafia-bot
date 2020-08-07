@@ -13,8 +13,8 @@ class Poll:
         self.init_keyboard()
 
     def send_poll(self, context: telegram.ext.CallbackContext):
-        context.bot.send_message(chat_id=self.sent_id, text=self.title,
-                                 reply_markup=self.reply_markup)
+        return context.bot.send_message(chat_id=self.sent_id, text=self.title,
+                                        reply_markup=self.reply_markup, parse_mode="MarkdownV2")
 
     def reset(self):
         self.sent_id = None
@@ -30,7 +30,8 @@ class Poll:
 
     def init_keyboard(self):
         for vote in self.votes_list:
-            self.keyboard.append([InlineKeyboardButton(vote, callback_data=vote)])
+            self.keyboard.append(
+                [InlineKeyboardButton(vote, callback_data=vote)])
         self.reply_markup = InlineKeyboardMarkup(self.keyboard)
 
     def sicktir_poll(self, context: telegram.ext.CallbackContext):

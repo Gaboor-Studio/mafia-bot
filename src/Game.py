@@ -17,8 +17,8 @@ class Game:
     def __init__(self, group_chat_id, group_data):
         self.night_votes = {"Mafia_shot": None,
                             "Detective": None, "Doctor": None, "Sniper": None}
-        self.voters = []
-        '''example: ["salinaria" , "mohokaja"}'''
+        self.voters = {}
+        '''example: {"salinaria":"No"}'''
         self.day_votes = {}
         '''example: {"amirparsa_sal":["salinaria","mohokaja"]} voters to amirparsa_sal'''
         self.mafias = []
@@ -33,7 +33,7 @@ class Game:
     def reset_info(self):
         self.night_votes = {"Mafia_shot": None,
                             "Detective": None, "Doctor": None, "Sniper": None}
-        self.voters = []
+        self.voters = {}
         self.day_votes = {}
         for player in self.get_alive_players():
             self.day_votes[player.user_name] = []
@@ -47,13 +47,16 @@ class Game:
         return players
 
     def find_player_with_most_vote(self):
-        player = None
+        players = []
         max_votes = 0
         for key, value in self.day_votes.items():
             if len(value) >= max_votes:
-                player = self.get_player_by_username(key)
                 max_votes = len(value)
-        return player
+        for key, value in self.day_votes.items():
+            if len(value) == max_votes:
+                player = self.get_player_by_username(key)
+                players.append(player)
+        return players
 
     def get_list(self):
         list_join = ""
@@ -135,6 +138,7 @@ class Game:
         return None
 
     def start_game(self, context: telegram.ext.CallbackContext):
+        self.is_started = True
         group_data = self.group_data
         if "active_game" in group_data.keys():
             game = group_data["active_game"]
@@ -218,40 +222,63 @@ class Game:
             player.talk(self.group_chat_id, context)
             time.sleep(5)
         for player in self.get_alive_players():
-            context.bot.send_message(chat_id=self.group_chat_id,
-                                     text="Do you want to kill " + player.get_markdown_call() + " ?",
-                                     parse_mode="MarkdownV2")
-            poll = Poll("Nobody voted yet!", ["YES", "NO"],
+            poll = Poll("Do you want to kill " + player.get_markdown_call() + "?  \nVoters:", ["YES", "NO"],
                         self.group_chat_id)
-            poll.send_poll(context)
-            context.bot.send_message(
+            poll_message = poll.send_poll(context)
+            time_message = context.bot.send_message(
                 chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
             time.sleep(15)
-            self.day_votes[player.user_name] = self.voters.copy()
-            self.voters = []
+            text = f"Votes for {player.get_markdown_call()}:  \n\nYes: "
+            for username, status in self.voters.items():
+                if status == "YES":
+                    self.day_votes[player.user_name].append(username)
+                    p = self.get_player_by_username(username)
+                    text += " " + p.get_markdown_call()
+            text += "  \n\nNo:"
+            for username, status in self.voters.items():
+                if status == "NO":
+                    p = self.get_player_by_username(username)
+                    text += " " + p.get_markdown_call()
+            poll_message.edit_text(text=text, parse_mode="MarkdownV2")
+            time_message.delete()
+            print(self.day_votes, end="\n\n")
+            print(self.voters)
+            self.voters = {}
 
         kill_players = self.find_votes_more_than_half()
+        print(f"{len(kill_players)} players defend themselves")
         self.reset_info()
-        if len(kill_players) > 1:
+        if len(kill_players) >= 1:
             for player in kill_players:
                 player.talk(self.group_chat_id, context)
                 time.sleep(5)
             for player in kill_players:
-                context.bot.send_message(chat_id=self.group_chat_id,
-                                         text="Do you want to kill " + player.get_markdown_call() + " ?",
-                                         parse_mode="MarkdownV2")
-                poll = Poll("Nobody voted yet!", ["YES", "NO"],
+                poll = Poll("Do you want to kill " + player.get_markdown_call() + "?  \nVoters:", ["YES", "NO"],
                             self.group_chat_id)
-                poll.send_poll(context)
-                context.bot.send_message(
+                poll_message = poll.send_poll(context)
+                time_message = context.bot.send_message(
                     chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
                 time.sleep(15)
-                self.day_votes[player.user_name] = self.voters.copy()
-                self.voters = []
+                text = f"Votes for {player.get_markdown_call()}:  \n\nYes: "
+                for username, status in self.voters.items():
+                    if status == "YES":
+                        self.day_votes[player.user_name].append(username)
+                        p = self.get_player_by_username(username)
+                        text += " " + p.get_markdown_call()
+                text += "  \n\nNo:"
+                for username, status in self.voters.items():
+                    if status == "NO":
+                        p = self.get_player_by_username(username)
+                        text += " " + p.get_markdown_call()
+                poll_message.edit_text(text=text, parse_mode="MarkdownV2")
+                time_message.delete()
+                self.voters = {}
+            print(self.day_votes, end="\n\n")
             final_kill = self.find_votes_more_than_half()
+            print(f"{len(final_kill)} with more than half")
             if len(final_kill) == 0:
                 context.bot.send_message(
-                    chat_id=self.group_chat_id, text="Nobody died today!!")
+                    chat_id=self.group_chat_id, text="Nobody died today.there is no player with more than half votes!!")
             elif len(final_kill) == 1:
                 player = final_kill[0]
                 context.bot.send_message(
@@ -259,16 +286,22 @@ class Game:
                     text=player.get_markdown_call() + " died Everybody listen to his final will",
                     parse_mode="MarkdownV2")
                 time.sleep(5)
+                player.is_alive = False
             else:
-                player = self.find_player_with_most_vote()
-                context.bot.send_message(
-                    chat_id=self.group_chat_id,
-                    text=player.get_markdown_call() + " died Everybody listen to his final will",
-                    parse_mode="MarkdownV2")
-                time.sleep(5)
+                players = self.find_player_with_most_vote()
+                if (len(players) == 1):
+                    player = players[0]
+                    context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
+                    ) + " died Everybody listen to his final will", parse_mode="MarkdownV2")
+                    time.sleep(5)
+                    player.is_alive = False
+                else:
+                    context.bot.send_message(
+                        chat_id=self.group_chat_id, text="Nobody died today because of players with same number of votes!!")
+                    time.sleep(5)
         else:
             context.bot.send_message(
-                chat_id=self.group_chat_id, text="Nobody died today!!")
+                chat_id=self.group_chat_id, text="Nobody died today.there is no player with more than half votes!!")
         self.reset_info()
 
     def night_result(self, context: telegram.ext.CallbackContext):
@@ -283,8 +316,8 @@ class Game:
                 self.night_votes.get("Detective")).role == Roles.Mafia:
             detective_guess = True
         if self.get_player_by_name(self.night_votes.get("Sniper")) is not None and (self.get_player_by_name(
-                self.night_votes.get("Sniper")).role == Roles.Mafia or self.get_player_by_name(
-            self.night_votes.get("Sniper")).role == Roles.GodFather):
+            self.night_votes.get("Sniper")).role == Roles.Mafia or self.get_player_by_name(
+                self.night_votes.get("Sniper")).role == Roles.GodFather):
             sniper_kill = True
 
         if mafia_kill and self.night_votes.get("Mafia_shot") is not None:
@@ -300,7 +333,8 @@ class Game:
         else:
             for player in self.get_alive_players():
                 if player.role == Roles.Sniper:
-                    context.bot.send_message(chat_id=self.group_chat_id, text=player.name + "Nobody died last night!!")
+                    context.bot.send_message(
+                        chat_id=self.group_chat_id, text=player.name + "Nobody died last night!!")
 
         for player in self.get_alive_players():
             if player.role == Roles.Detective:
