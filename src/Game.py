@@ -194,10 +194,10 @@ class Game:
             self.just_players[r].role = Roles.GodFather
             self.mafias.append(self.just_players[r])
             self.just_players[r].emoji = "🧛"
-            self.just_players.pop(r)
             mafia_number = mafia_number + 1
             self.just_players[r].mafia_rank = mafia_number
             self.just_players[r].send_role(context)
+            self.just_players.pop(r)
         # Other Mafias
         for i in range(int(len(self.players) / 3) - mafia_number):
             r = random.randrange(0, len(self.just_players))
@@ -236,7 +236,7 @@ class Game:
             self.citizens.append(player)
             player.emoji = "👨‍💼"
             player.send_role(context)
-            self.just_players.remove(player)
+        self.just_players.clear()
 
     def day(self, context: telegram.ext.CallbackContext):
         self.state = GameState.Day
@@ -308,6 +308,12 @@ class Game:
                     chat_id=self.group_chat_id,
                     text=player.get_markdown_call() + "☠ died Everybody listen to his final will",
                     parse_mode="MarkdownV2")
+                if player.role == Roles.Mafia or player.role == Roles.GodFather:
+                    for p in self.get_alive_players():
+                        if p.mafia_rank > player.mafia_rank:
+                            p.mafia_rank = p.mafia_rank - 1
+                            context.bot.send_message(chat_id=p.user_id,
+                                                     text="Your new Mafia Rank : " + str (p.mafia_rank))
                 time.sleep(5)
                 player.is_alive = False
             else:
@@ -323,7 +329,7 @@ class Game:
                             if p.mafia_rank > player.mafia_rank:
                                 p.mafia_rank = p.mafia_rank - 1
                                 context.bot.send_message(chat_id=p.user_id,
-                                                         text="Your new Mafia Rank : " + p.mafia_rank)
+                                                         text="Your new Mafia Rank : " +str (p.mafia_rank))
                 else:
                     context.bot.send_message(
                         chat_id=self.group_chat_id,
@@ -374,7 +380,7 @@ class Game:
                 if p.mafia_rank > self.get_player_by_name(
                         self.night_votes.get("Sniper")).mafia_rank:
                     p.mafia_rank = p.mafia_rank - 1
-                    context.bot.send_message(chat_id=p.user_id, text="Your new Mafia Rank : " + p.mafia_rank)
+                    context.bot.send_message(chat_id=p.user_id, text="Your new Mafia Rank : " + str (p.mafia_rank))
         elif sniper_kill == 2:
             for player in self.get_alive_players():
                 if player.role == Roles.Sniper:
