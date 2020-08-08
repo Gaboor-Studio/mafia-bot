@@ -438,7 +438,7 @@ class Game:
         text = ""
         for player in self.players:
             if player.mafia_rank == 0:
-                text = text + "🙂 " + player.get_markdown_call + " " + player.role.name + player.emoji + "\n"
+                text = text + "🙂 " + player.get_markdown_call() + " " + player.role.name + player.emoji + "\n"
             else:
                 text = text + "😈 " + player.get_markdown_call() + " " + player.role.name + player.emoji + "\n"
         context.bot.send_message(
