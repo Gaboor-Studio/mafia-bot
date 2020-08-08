@@ -14,7 +14,7 @@ class Poll:
 
     def send_poll(self, context: telegram.ext.CallbackContext):
         return context.bot.send_message(chat_id=self.sent_id, text=self.title,
-                                        reply_markup=self.reply_markup, parse_mode="MarkdownV2")
+                                        reply_markup=self.reply_markup, parse_mode="Markdown")
 
     def reset(self):
         self.sent_id = None

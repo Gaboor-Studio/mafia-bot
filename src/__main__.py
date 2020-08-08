@@ -158,7 +158,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
             text += "  \n" + p.get_markdown_call()
 
         query.edit_message_text(
-            text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="MarkdownV2")
+            text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
     elif game.state == GameState.Night:
         query.answer()

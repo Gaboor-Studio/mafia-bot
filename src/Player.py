@@ -43,7 +43,7 @@ class Player:
     def talk(self, group_chat_id, context: telegram.ext.CallbackContext):
         context.bot.send_message(chat_id=group_chat_id,
                                  text=self.get_markdown_call() + "'s turn to talk 🗣",
-                                 parse_mode='MarkdownV2')
+                                 parse_mode='Markdown')
 
     def get_markdown_call(self):
         return f"[{self.name}](tg://user?id={self.user_id})"

@@ -94,14 +94,11 @@ class Game:
                 chat_id=user['id'], text="You joined the game successfully")
         else:
             if user_data["active_game"] == self:
-                update.message.reply_markdown(
-                    f"[{user.full_name}](tg://user?id={user.id}) has already joined the game!", parse_mode="MarkdownV2")
+                update.message.reply_markdown("You have already joined the game!")
                 context.bot.send_message(
                     chat_id=user['id'], text="You have already joined the game")
             else:
-                update.message.reply_markdown(
-                    f"[{user.full_name}](tg://user?id={user.id}) has already joined a game in another group!",
-                    parse_mode="MarkdownV2")
+                update.message.reply_markdown("You have already joined a game in another group!")
                 context.bot.send_message(
                     chat_id=user['id'], text="You have already joined a game in another group")
 
@@ -114,8 +111,7 @@ class Game:
                 # del self.votes[player.user_name]
                 self.players.remove(player)
                 self.just_players.remove(player)
-                update.message.reply_text(
-                    player.get_markdown_call() + " successfully left the game!", parse_mode="MarkdownV2")
+                update.message.reply_text("You left the game successfully!")
             else:
                 update.message.reply_text("You are not in this game!")
         else:
@@ -261,7 +257,7 @@ class Game:
                 if status == "NO":
                     p = self.get_player_by_username(username)
                     text += " " + p.get_markdown_call()
-            poll_message.edit_text(text=text, parse_mode="MarkdownV2")
+            poll_message.edit_text(text=text, parse_mode="Markdown")
             time_message.delete()
             print(self.day_votes, end="\n\n")
             print(self.voters)
@@ -293,7 +289,7 @@ class Game:
                     if status == "NO":
                         p = self.get_player_by_username(username)
                         text += " " + p.get_markdown_call()
-                poll_message.edit_text(text=text, parse_mode="MarkdownV2")
+                poll_message.edit_text(text=text, parse_mode="Markdown")
                 time_message.delete()
                 self.voters = {}
             print(self.day_votes, end="\n\n")
@@ -307,7 +303,7 @@ class Game:
                 context.bot.send_message(
                     chat_id=self.group_chat_id,
                     text=player.get_markdown_call() + "☠ died Everybody listen to his final will",
-                    parse_mode="MarkdownV2")
+                    parse_mode="Markdown")
                 if player.role == Roles.Mafia or player.role == Roles.GodFather:
                     for p in self.get_alive_players():
                         if p.mafia_rank > player.mafia_rank:
@@ -321,7 +317,7 @@ class Game:
                 if len(players) == 1:
                     player = players[0]
                     context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
-                    ) + "☠️ died Everybody listen to his final will", parse_mode="MarkdownV2")
+                    ) + "☠️ died Everybody listen to his final will", parse_mode="Markdown")
                     time.sleep(5)
                     player.is_alive = False
                     if player.role == Roles.Mafia or player.role == Roles.GodFather:
@@ -429,7 +425,7 @@ class Game:
             else:
                 text = text + "😈 " + player.name + " " + player.role.name + player.emoji + "\n"
         context.bot.send_message(
-            chat_id=self.group_chat_id, text=text, parse_mode="MarkdownV2")
+            chat_id=self.group_chat_id, text=text, parse_mode="Markdown")
 
     def result_game(self, context: telegram.ext.CallbackContext):
         mafias = 0
