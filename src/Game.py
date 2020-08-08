@@ -95,14 +95,11 @@ class Game:
                 chat_id=user['id'], text="You joined the game successfully")
         else:
             if user_data["active_game"] == self:
-                update.message.reply_markdown(
-                    f"[{user.full_name}](tg://user?id={user.id}) has already joined the game!", parse_mode="Markdown")
+                update.message.reply_markdown("You have already joined the game!")
                 context.bot.send_message(
                     chat_id=user['id'], text="You have already joined the game")
             else:
-                update.message.reply_markdown(
-                    f"[{user.full_name}](tg://user?id={user.id}) has already joined a game in another group!",
-                    parse_mode="Markdown")
+                update.message.reply_markdown("You have already joined a game in another group!")
                 context.bot.send_message(
                     chat_id=user['id'], text="You have already joined a game in another group")
 
@@ -115,8 +112,7 @@ class Game:
                 # del self.votes[player.user_name]
                 self.players.remove(player)
                 self.just_players.remove(player)
-                update.message.reply_text(
-                    player.get_markdown_call() + " successfully left the game!", parse_mode="Markdown")
+                update.message.reply_text("You left the game successfully!")
             else:
                 update.message.reply_text("You are not in this game!")
         else:
@@ -238,6 +234,19 @@ class Game:
             player.emoji = "👨‍💼"
             player.send_role(context)
         self.just_players.clear()
+        if len(self.mafias) > 1:
+            self.notify_mafias(context)
+
+    def notify_mafias(self, context: telegram.ext.CallbackContext):
+        for mafia in self.mafias:
+            if len(self.mafias) == 2:
+                text = "Your teammate is:\n"
+            else:
+                text = "Your teammates are:\n"
+            for teammate in self.mafias:
+                if mafia.user_id != teammate.user_id:
+                    text += teammate.get_markdown_call()
+            context.bot.send_message(chat_id=mafia.user_id, text=text, parse_mode="Markdown")
 
     def day(self, context: telegram.ext.CallbackContext):
         self.state = GameState.Day
@@ -359,8 +368,8 @@ class Game:
             detective_guess = True
 
         if self.get_player_by_name(self.night_votes.get("Sniper")) is not None and (self.get_player_by_name(
-            self.night_votes.get("Sniper")).role == Roles.Mafia or self.get_player_by_name(
-                self.night_votes.get("Sniper")).role == Roles.GodFather):
+                self.night_votes.get("Sniper")).role == Roles.Mafia or self.get_player_by_name(
+            self.night_votes.get("Sniper")).role == Roles.GodFather):
             sniper_kill = 1
         elif self.get_player_by_name(self.night_votes.get("Sniper")) is not None:
             sniper_kill = 2
@@ -429,9 +438,9 @@ class Game:
         text = ""
         for player in self.players:
             if player.mafia_rank == 0:
-                text = text + "🙂 " + player.name + " " + player.role.name + player.emoji + "\n"
+                text = text + "🙂 " + player.get_markdown_call + " " + player.role.name + player.emoji + "\n"
             else:
-                text = text + "😈 " + player.name + " " + player.role.name + player.emoji + "\n"
+                text = text + "😈 " + player.get_markdown_call() + " " + player.role.name + player.emoji + "\n"
         context.bot.send_message(
             chat_id=self.group_chat_id, text=text, parse_mode="Markdown")
 
