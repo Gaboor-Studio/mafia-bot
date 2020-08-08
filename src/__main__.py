@@ -139,23 +139,24 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
     if game.state == GameState.Day:
         query.answer()
         vote = query.data
-        if vote == "YES":
-            game.voters[query.from_user['username']] = "YES"
-        else:
-            game.voters[query.from_user['username']] = "NO"
-        keyboard = []
-        keyboard.append(
-            [InlineKeyboardButton("YES", callback_data="YES")])
-        keyboard.append(
-            [InlineKeyboardButton("NO", callback_data="NO")])
-        text = query.message.text_markdown
-        lines = text.splitlines(True)
-        text = lines[0] + lines[1]
-        if text[-1] == '\n':
-            text = text[:-1]
-        for username in game.voters.keys():
-            p = game.get_player_by_username(username)
-            text += "  \n" + p.get_markdown_call()
+        if game.get_player_by_id(query.from_user['id']) != None:
+            if vote == "YES":
+                game.voters[query.from_user['id']] = "YES"
+            else:
+                game.voters[query.from_user['id']] = "NO"
+            keyboard = []
+            keyboard.append(
+                [InlineKeyboardButton("YES", callback_data="YES")])
+            keyboard.append(
+                [InlineKeyboardButton("NO", callback_data="NO")])
+            text = query.message.text_markdown
+            lines = text.splitlines(True)
+            text = lines[0] + lines[1]
+            if text[-1] == '\n':
+                text = text[:-1]
+            for user_id in game.voters.keys():
+                p = game.get_player_by_id(user_id)
+                text += "  \n" + p.get_markdown_call()
 
         query.edit_message_text(
             text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")

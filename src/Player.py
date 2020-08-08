@@ -71,4 +71,5 @@ class Player:
         elif self.role == Roles.Sniper:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEVNfE0iiRs6BL7yucCAoP5bH6wLv4QACHwAD1ul3K_8BpWyNZM2OGgQ")
-        context.bot.send_message(chat_id=self.user_id, text=self.role.name + self.emoji)
+        context.bot.send_message(chat_id=self.user_id,
+                                 text=self.role.name + self.emoji)
