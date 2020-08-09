@@ -2,6 +2,7 @@ import telegram
 import random
 from Player import Player, Roles
 from telegram.ext import Updater
+from telegram.ext.dispatcher import run_async
 from Poll import Poll
 import time
 import enum
@@ -95,11 +96,13 @@ class Game:
                 chat_id=user['id'], text="You joined the game successfully")
         else:
             if user_data["active_game"] == self:
-                update.message.reply_markdown("You have already joined the game!")
+                update.message.reply_markdown(
+                    "You have already joined the game!")
                 context.bot.send_message(
                     chat_id=user['id'], text="You have already joined the game")
             else:
-                update.message.reply_markdown("You have already joined a game in another group!")
+                update.message.reply_markdown(
+                    "You have already joined a game in another group!")
                 context.bot.send_message(
                     chat_id=user['id'], text="You have already joined a game in another group")
 
@@ -149,6 +152,7 @@ class Game:
                 return player
         return None
 
+    @run_async
     def start_game(self, context: telegram.ext.CallbackContext):
         self.is_started = True
         group_data = self.group_data
@@ -246,7 +250,8 @@ class Game:
             for teammate in self.mafias:
                 if mafia.user_id != teammate.user_id:
                     text += teammate.get_markdown_call()
-            context.bot.send_message(chat_id=mafia.user_id, text=text, parse_mode="Markdown")
+            context.bot.send_message(
+                chat_id=mafia.user_id, text=text, parse_mode="Markdown")
 
     def day(self, context: telegram.ext.CallbackContext):
         self.state = GameState.Day
@@ -368,8 +373,8 @@ class Game:
             detective_guess = True
 
         if self.get_player_by_name(self.night_votes.get("Sniper")) is not None and (self.get_player_by_name(
-                self.night_votes.get("Sniper")).role == Roles.Mafia or self.get_player_by_name(
-            self.night_votes.get("Sniper")).role == Roles.GodFather):
+            self.night_votes.get("Sniper")).role == Roles.Mafia or self.get_player_by_name(
+                self.night_votes.get("Sniper")).role == Roles.GodFather):
             sniper_kill = 1
         elif self.get_player_by_name(self.night_votes.get("Sniper")) is not None:
             sniper_kill = 2
@@ -438,9 +443,11 @@ class Game:
         text = ""
         for player in self.players:
             if player.mafia_rank == 0:
-                text = text + "🙂 " + player.get_markdown_call() + " " + player.role.name + player.emoji + "\n"
+                text = text + "🙂 " + player.get_markdown_call() + " " + player.role.name + \
+                    player.emoji + "\n"
             else:
-                text = text + "😈 " + player.get_markdown_call() + " " + player.role.name + player.emoji + "\n"
+                text = text + "😈 " + player.get_markdown_call() + " " + player.role.name + \
+                    player.emoji + "\n"
         context.bot.send_message(
             chat_id=self.group_chat_id, text=text, parse_mode="Markdown")
 
