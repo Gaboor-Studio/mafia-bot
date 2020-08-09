@@ -135,7 +135,7 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 
 def button(update: telegram.Update, context: telegram.ext.CallbackContext):
     query = update.callback_query
-    game = context.user_data["active_game"]
+    game = context.chat_data["active_game"]
     if game.state == GameState.Day:
         query.answer()
         vote = query.data

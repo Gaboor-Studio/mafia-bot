@@ -178,10 +178,10 @@ class Game:
                 chat_id=self.group_chat_id, text='There is no game in this group!')
 
     def delete_game(self, context: telegram.ext.CallbackContext):
-        if not self.is_started:
-            for job in context.job_queue._queue.queue:
-                if job[1].name == self.group_chat_id:
-                    context.job_queue._queue.queue.remove(job)
+        for job in context.job_queue._queue.queue:
+            if job.name == self.group_chat_id:
+                print("successful")
+                context.job_queue._queue.queue.remove(job)
         for player in self.players:
             del player.user_data["active_game"]
         del self.group_data["active_game"]
