@@ -35,6 +35,8 @@ class Game(threading.Thread):
         self.state = GameState.Day
         self.print_result = False
         self.context = context
+        self.messages = {"Mafia_shot": None,
+                         "Detective": None, "Doctor": None, "Sniper": None}
 
     def run(self):
         try:
@@ -179,6 +181,20 @@ class Game(threading.Thread):
             if player.user_name == username:
                 return player
         return None
+
+    def get_players_name_without_detect(self):
+        without_detect = []
+        for player in self.get_alive_players():
+            if player.role != Roles.Detective:
+                without_detect.append(player.name)
+        return without_detect
+
+    def get_players_name_without_sniper(self):
+        without_sniper = []
+        for player in self.get_alive_players():
+            if player.role != Roles.Detective:
+                without_sniper.append(player.name)
+        return without_sniper
 
     def start_game(self, context: telegram.ext.CallbackContext):
         self.is_started = True
@@ -387,6 +403,26 @@ class Game(threading.Thread):
             r = random.randrange(0, len(self.get_citizens()))
             self.night_votes.update(
                 {"Mafia_shot": self.get_citizens()[r].name})
+            self.messages.get("Mafia_shot").edit_text(
+                text="Bot choose randomly " + self.get_citizens()[r].get_markdown_call(), parse_mode="MarkDown")
+
+        if self.night_votes.get("Doctor") is None:
+            r = random.randrange(0, len(self.get_alive_players()))
+            self.night_votes.update(
+                {"Doctor": self.get_alive_players()[r].name})
+            self.messages.get("Doctor").edit_text(
+                text="Bot choose randomly " + self.get_alive_players()[r].get_markdown_call()
+                , parse_mode="MarkDown")
+
+        if self.night_votes.get("Sniper") is None:
+            self.messages.get("Sniper").edit_text(text="You didnt choose anyone to snipe him")
+        if self.night_votes.get("Detective") is None:
+            r = random.randrange(0, len(self.get_players_name_without_detect()))
+            self.night_votes.update(
+                {"Detective": self.get_players_name_without_detect()[r].name})
+            self.messages.get("Doctor").edit_text(
+                text="Bot choose randomly " + self.get_players_name_without_detect()[r].get_markdown_call()
+                , parse_mode="MarkDown")
 
         if self.night_votes.get("Mafia_shot") is not None and self.night_votes.get(
                 "Doctor") is not None and self.night_votes.get("Mafia_shot") == self.night_votes.get("Doctor"):
@@ -396,8 +432,8 @@ class Game(threading.Thread):
             detective_guess = True
 
         if self.get_player_by_name(self.night_votes.get("Sniper")) is not None and (self.get_player_by_name(
-            self.night_votes.get("Sniper")).role == Roles.Mafia or self.get_player_by_name(
-                self.night_votes.get("Sniper")).role == Roles.GodFather):
+                self.night_votes.get("Sniper")).role == Roles.Mafia or self.get_player_by_name(
+            self.night_votes.get("Sniper")).role == Roles.GodFather):
             sniper_kill = 1
         elif self.get_player_by_name(self.night_votes.get("Sniper")) is not None:
             sniper_kill = 2
@@ -446,19 +482,23 @@ class Game(threading.Thread):
             if player.mafia_rank == 1:
                 poll = Poll("Who do you want to kill?" + player.emoji,
                             self.get_citizens_name(), player.user_id)
-                poll.send_poll(context)
+                message = poll.send_poll(context)
+                self.messages.update({"Mafia_shot": message})
             elif player.role == Roles.Sniper:
                 poll = Poll("Who do you want to snipe?" + player.emoji,
                             self.get_alive_players_name(), player.user_id)
-                poll.send_poll(context)
+                message = poll.send_poll(context)
+                self.messages.update({"Sniper": message})
             elif player.role == Roles.Detective:
                 poll = Poll("Who do you want to doubt?" + player.emoji,
                             self.get_alive_players_name(), player.user_id)
-                poll.send_poll(context)
+                message = poll.send_poll(context)
+                self.messages.update({"Detective": message})
             elif player.role == Roles.Doctor:
                 poll = Poll("Who do you want to save‍?" + player.emoji,
                             self.get_alive_players_name(), player.user_id)
-                poll.send_poll(context)
+                message = poll.send_poll(context)
+                self.messages.update({"Doctor": message})
         time.sleep(30)
         self.night_result(context)
 
@@ -467,10 +507,10 @@ class Game(threading.Thread):
         for player in self.players:
             if player.mafia_rank == 0:
                 text = text + "🙂 " + player.get_markdown_call() + " " + player.role.name + \
-                    player.emoji + "\n"
+                       player.emoji + "\n"
             else:
                 text = text + "😈 " + player.get_markdown_call() + " " + player.role.name + \
-                    player.emoji + "\n"
+                       player.emoji + "\n"
         context.bot.send_message(
             chat_id=self.group_chat_id, text=text, parse_mode="Markdown")
 
