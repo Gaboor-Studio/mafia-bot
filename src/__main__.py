@@ -64,10 +64,9 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     user_data = context.user_data
     if "active_game" not in group_data.keys():
         if has_subscribed(user['id'], update.effective_chat['title']):
-            game = Game(group_id, group_data)
+            game = Game(group_id, group_data, context)
             group_data["active_game"] = game
-            context.job_queue.run_once(game.start_game, 60, context=(update.message.chat_id, context.chat_data),
-                                       name=group_id)
+            game.start()
             context.bot.send_sticker(chat_id=game.group_chat_id,
                                      sticker="CAACAgQAAxkBAAEBEGZfEajfE4ubecspTvk_h_MmLWldhwACFwAD1ul3K_CgFM5dUHoRGgQ")
             update.message.reply_text("New game started")

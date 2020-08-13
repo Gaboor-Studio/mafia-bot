@@ -6,6 +6,8 @@ from telegram.ext.dispatcher import run_async
 from Poll import Poll
 import time
 import enum
+import threading
+import ctypes
 
 
 class GameState(enum.Enum):
@@ -13,9 +15,10 @@ class GameState(enum.Enum):
     Night = 1
 
 
-class Game:
+class Game(threading.Thread):
 
-    def __init__(self, group_chat_id, group_data):
+    def __init__(self, group_chat_id, group_data, context):
+        threading.Thread.__init__(self)
         self.night_votes = {"Mafia_shot": None,
                             "Detective": None, "Doctor": None, "Sniper": None}
         self.voters = {}
@@ -31,6 +34,31 @@ class Game:
         self.is_started = False
         self.state = GameState.Day
         self.print_result = False
+        self.context = context
+
+    def run(self):
+        try:
+            time.sleep(60)
+            self.start_game(self.context)
+        except Exception as e:
+            print(e)
+        finally:
+            print('ended')
+
+    def get_thread_id(self):
+        if hasattr(self, '_thread_id'):
+            return self._thread_id
+        for id, thread in threading._active.items():
+            if thread is self:
+                return id
+
+    def raise_exception(self):
+        thread_id = self.get_thread_id()
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
+                                                         ctypes.py_object(SystemExit))
+        if res > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
+            print('Exception raise failure')
 
     def reset_info(self):
         self.night_votes = {"Mafia_shot": None,
@@ -152,7 +180,6 @@ class Game:
                 return player
         return None
 
-    @run_async
     def start_game(self, context: telegram.ext.CallbackContext):
         self.is_started = True
         group_data = self.group_data
@@ -178,14 +205,10 @@ class Game:
                 chat_id=self.group_chat_id, text='There is no game in this group!')
 
     def delete_game(self, context: telegram.ext.CallbackContext):
-        for job in context.job_queue._queue.queue:
-            if job.name == self.group_chat_id:
-                print("successful")
-                context.job_queue._queue.queue.remove(job)
         for player in self.players:
             del player.user_data["active_game"]
         del self.group_data["active_game"]
-        self.just_players.clear()
+        self.raise_exception()
 
     def set_players_roles(self, context: telegram.ext.CallbackContext):
         mafia_number = 0
