@@ -7,6 +7,7 @@ import requests
 from Player import Player, Roles
 from Poll import Poll
 import traceback
+
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
 TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 # TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
@@ -133,7 +134,6 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 
 
 def button(update: telegram.Update, context: telegram.ext.CallbackContext):
-
     print("hello?")
     query = update.callback_query
     print(query)
@@ -143,7 +143,8 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
 
         print("day state")
         vote = query.data
-        if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat']['id'] == game.group_chat_id:
+        if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat'][
+            'id'] == game.group_chat_id:
             if vote == "YES":
                 game.voters[query.from_user['id']] = "YES"
             else:
@@ -180,7 +181,8 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
             game.night_votes.update({"Detective": vote})
         elif player.role == Roles.Doctor:
             game.night_votes.update({"Doctor": vote})
-        query.edit_message_text(text="Your choice:" + vote)
+        query.edit_message_text(text="Your choice:" + game.get_player_by_id(int(vote)).get_markdown_call(),
+                                parse_mode="MarkDown")
 
 
 dispatcher = updater.dispatcher
