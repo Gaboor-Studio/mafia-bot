@@ -201,7 +201,7 @@ class Game(threading.Thread):
     def get_players_without_sniper(self):
         without_sniper = []
         for player in self.get_alive_players():
-            if player.role != Roles.Detective:
+            if player.role != Roles.Sniper:
                 without_sniper.append(player)
         return without_sniper
 
@@ -273,7 +273,7 @@ class Game(threading.Thread):
         self.just_players[r].send_role(context)
         self.just_players.pop(r)
         # Sniper
-        if len(self.players) > 6:
+        if len(self.players) > 3:
             r = random.randrange(0, len(self.just_players))
             self.just_players[r].role = Roles.Sniper
             self.just_players[r].emoji = "🕸‍"
@@ -453,38 +453,48 @@ class Game(threading.Thread):
                 context.bot.send_message(
                     chat_id=detective_player.user_id, text="You guessed wrong!")
 
-        if self.get_player_by_id(self.night_votes.get("Sniper")) is not None:
+        if self.get_player_by_id(int(self.night_votes.get("Sniper"))) is not None:
             if self.get_player_by_id(int(self.night_votes.get("Sniper"))).role == Roles.Mafia:
                 sniper_kill = 1
             else:
                 sniper_kill = 2
 
-        if sniper_kill == 1 and self.night_votes.get("Sniper") is not None:
-            context.bot.send_message(
-                chat_id=self.group_chat_id,
-                text=self.get_player_by_id(int(self.night_votes.get("Sniper"))).name + "☠️ died last night!!")
-            self.get_player_by_id(int(
-                self.night_votes.get("Sniper"))).is_alive = False
+        kill_list = []
+        if sniper_kill == 1:
+            kill_list.append(self.get_player_by_id(
+                int(self.night_votes.get("Sniper"))))
             for p in self.get_alive_players():
                 if p.mafia_rank > self.get_player_by_id(int(
                         self.night_votes.get("Sniper"))).mafia_rank:
                     p.mafia_rank = p.mafia_rank - 1
                     context.bot.send_message(
                         chat_id=p.user_id, text="Your new Mafia Rank : " + str(p.mafia_rank))
+
         elif sniper_kill == 2:
-            context.bot.send_message(
-                chat_id=self.group_chat_id, text=sniper_player.name + "☠️ died last night!!")
-            sniper_player.is_alive = False
+            kill_list.append(sniper_player)
 
         if mafia_kill:
-            context.bot.send_message(
-                chat_id=self.group_chat_id,
-                text=self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).name + "☠️ died last night!!")
-            self.get_player_by_id(
-                int(self.night_votes.get("Mafia_shot"))).is_alive = False
+            kill_list.append(self.get_player_by_id(
+                int(self.night_votes.get("Mafia_shot"))))
+
+        random.shuffle(kill_list)
+        message = ""
+        if len(kill_list) == 0:
+            message += "No player dead !"
         else:
-            context.bot.send_message(
-                chat_id=self.group_chat_id, text="Nobody died last night!!")
+            message += f"{len(kill_list)} "
+            if len(kill_list) == 1:
+                message += "player dead:  \n"
+            else:
+                message += "players dead:  \n"
+        for player in kill_list:
+            message += player.get_markdown_call() + "  \n"
+            player.is_alive = False
+
+        if sniper_kill == 1:
+            message += "Congratulations! Our sniper killed a mafia successfully :)"
+
+        context.bot.send_message(chat_id=self.group_chat_id, text=message)
 
         self.night_votes = {"Mafia_shot": None,
                             "Detective": None, "Doctor": None, "Sniper": None}
