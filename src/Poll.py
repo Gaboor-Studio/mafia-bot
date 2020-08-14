@@ -5,7 +5,7 @@ from telegram.ext import CommandHandler
 
 class Poll:
 
-    def __init__(self, title: str, votes_list, sent_id):
+    def __init__(self, title, votes_list, sent_id):
         self.sent_id = sent_id
         self.votes_list = votes_list
         self.title = title

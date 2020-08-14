@@ -6,7 +6,7 @@ import requests
 
 from Player import Player, Roles
 from Poll import Poll
-
+import traceback
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
 TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 # TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
@@ -133,16 +133,24 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 
 
 def button(update: telegram.Update, context: telegram.ext.CallbackContext):
+    print("hello?")
     query = update.callback_query
-    game = context.chat_data["active_game"]
+    print(query)
+    game = context.user_data["active_game"]
+    print("game detected")
     if game.state == GameState.Day:
+        print("day state")
         query.answer()
         vote = query.data
-        if game.get_player_by_id(query.from_user['id']) != None:
+        if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat']['id'] == game.group_chat_id:
             if vote == "YES":
                 game.voters[query.from_user['id']] = "YES"
             else:
                 game.voters[query.from_user['id']] = "NO"
+            url = f"https://api.telegram.org/bot{TOKEN}/answerCallbackQuery"
+            params = {'callback_query_id': query.id,
+                      'text': f"You voted for {vote}"}
+            requests.get(url=url, params=params)
             keyboard = []
             keyboard.append(
                 [InlineKeyboardButton("YES", callback_data="YES")])
@@ -161,8 +169,10 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
             text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
     elif game.state == GameState.Night:
+        print("night state")
         query.answer()
         vote = query.data
+        print(vote)
         player = game.get_player_by_id(query.from_user['id'])
         if player.mafia_rank == 1:
             game.night_votes.update({"Mafia_shot": vote})
