@@ -133,24 +133,23 @@ def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 
 
 def button(update: telegram.Update, context: telegram.ext.CallbackContext):
+
     print("hello?")
     query = update.callback_query
     print(query)
     game = context.user_data["active_game"]
     print("game detected")
     if game.state == GameState.Day:
+
         print("day state")
-        query.answer()
         vote = query.data
         if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat']['id'] == game.group_chat_id:
             if vote == "YES":
                 game.voters[query.from_user['id']] = "YES"
             else:
                 game.voters[query.from_user['id']] = "NO"
-            url = f"https://api.telegram.org/bot{TOKEN}/answerCallbackQuery"
-            params = {'callback_query_id': query.id,
-                      'text': f"You voted for {vote}"}
-            requests.get(url=url, params=params)
+            context.bot.answer_callback_query(
+                query.id, text=f"You voted for {vote}")
             keyboard = []
             keyboard.append(
                 [InlineKeyboardButton("YES", callback_data="YES")])
@@ -164,9 +163,8 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
             for user_id in game.voters.keys():
                 p = game.get_player_by_id(user_id)
                 text += "  \n" + p.get_markdown_call()
-
-        query.edit_message_text(
-            text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+            query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(
+                keyboard), parse_mode="Markdown")
 
     elif game.state == GameState.Night:
         print("night state")

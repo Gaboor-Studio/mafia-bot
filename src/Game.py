@@ -546,6 +546,7 @@ class Game(threading.Thread):
 
     def turn(self, context: telegram.ext.CallbackContext):
         if self.result_game(context):
-            self.night(context)
-        if self.result_game(context):
             self.day(context)
+
+        if self.result_game(context):
+            self.night(context)
