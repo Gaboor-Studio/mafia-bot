@@ -400,19 +400,21 @@ class Game(threading.Thread):
         sniper_kill = 0
         detective_guess = False
 
+        print(self.night_votes)
+
         if self.night_votes.get("Mafia_shot") is None:
             r = random.randrange(0, len(self.get_citizens()))
             self.night_votes.update(
                 {"Mafia_shot": self.get_citizens()[r].user_id})
             self.messages.get("Mafia_shot").edit_text(
-                text="Bot choose randomly " + self.get_citizens()[r].get_markdown_call(), parse_mode="MarkDown")
+                text="Bot chose randomly " + self.get_citizens()[r].get_markdown_call(), parse_mode="MarkDown")
 
         if self.night_votes.get("Doctor") is None:
             r = random.randrange(0, len(self.get_alive_players()))
             self.night_votes.update(
                 {"Doctor": self.get_alive_players()[r].user_id})
             self.messages.get("Doctor").edit_text(
-                text="Bot choose randomly " + self.get_alive_players()[r].get_markdown_call(), parse_mode="MarkDown")
+                text="Bot chose randomly " + self.get_alive_players()[r].get_markdown_call(), parse_mode="MarkDown")
 
         # if self.night_votes.get("Sniper") is None:
         #     self.messages.get("Sniper").edit_text(
@@ -422,15 +424,14 @@ class Game(threading.Thread):
                 0, len(self.get_players_without_detect()))
             self.night_votes.update(
                 {"Detective": self.get_players_without_detect()[r].user_id})
-            self.messages.get("Doctor").edit_text(
-                text="Bot choose randomly " + self.get_players_without_detect()[r].get_markdown_call(),
+            self.messages.get("Detective").edit_text(
+                text="Bot chose randomly " + self.get_players_without_detect()[r].get_markdown_call(),
                 parse_mode="MarkDown")
+        print(self.night_votes)
 
-        if self.night_votes.get("Mafia_shot") is not None and self.night_votes.get(
-                "Doctor") is not None and self.night_votes.get("Mafia_shot") == self.night_votes.get("Doctor"):
+        if str(self.night_votes.get("Mafia_shot")) == str(self.night_votes.get("Doctor")):
             mafia_kill = False
-        if self.night_votes.get("Detective") is not None and self.get_player_by_id(int(
-                self.night_votes.get("Detective"))).role == "Mafia":
+        if self.get_player_by_id(int(self.night_votes.get("Detective"))).role == Roles.Mafia:
             detective_guess = True
 
         if self.get_player_by_id(self.night_votes.get("Sniper")) is not None and (self.get_player_by_id(int(
@@ -439,12 +440,11 @@ class Game(threading.Thread):
         elif self.get_player_by_id(self.night_votes.get("Sniper")) is not None:
             sniper_kill = 2
 
-        if mafia_kill and self.night_votes.get("Mafia_shot") is not None:
+        if mafia_kill:
             context.bot.send_message(
                 chat_id=self.group_chat_id,
                 text=self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).name + "☠️ died last night!!")
-            self.get_player_by_id(int(self.night_votes.get(
-                "Mafia_shot"))).is_alive = False
+            self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).is_alive = False
         else:
             context.bot.send_message(
                 chat_id=self.group_chat_id, text="Nobody died last night!!")
