@@ -144,7 +144,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
         print("day state")
         vote = query.data
         if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat'][
-            'id'] == game.group_chat_id:
+                'id'] == game.group_chat_id:
             if vote == "YES":
                 game.voters[query.from_user['id']] = "YES"
             else:

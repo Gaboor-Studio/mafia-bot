@@ -33,6 +33,7 @@ class Game(threading.Thread):
         self.group_chat_id = group_chat_id
         self.group_data = group_data
         self.is_started = False
+        self.is_finished = False
         self.state = GameState.Day
         self.print_result = False
         self.context = context
@@ -46,7 +47,8 @@ class Game(threading.Thread):
         except Exception as e:
             traceback.print_exc(e)
         finally:
-            print('ended')
+            if self.is_finished:
+                self.delete_game(self.context)
 
     def get_thread_id(self):
         if hasattr(self, '_thread_id'):
@@ -104,6 +106,12 @@ class Game(threading.Thread):
             if player.role != Roles.Mafia and player.role != Roles.GodFather:
                 city.append(player)
         return city
+
+    def get_player_by_role(self, role):
+        for player in self.get_alive_players():
+            if player.role == role:
+                return player
+        return None
 
     def get_citizens_name(self):
         city = []
@@ -210,6 +218,7 @@ class Game(threading.Thread):
                 self.reset_info()
                 while self.result_game(context):
                     self.turn(context)
+                self.is_finished = True
 
             else:
                 context.bot.send_message(chat_id=self.group_chat_id, text='Game is canceled because there is not '
@@ -396,9 +405,11 @@ class Game(threading.Thread):
         self.reset_info()
 
     def night_result(self, context: telegram.ext.CallbackContext):
+        detective_player = self.get_player_by_role(Roles.Detective)
+        doctor_player = self.get_player_by_role(Roles.Doctor)
+        sniper_player = self.get_player_by_role(Roles.Sniper)
         mafia_kill = True
         sniper_kill = 0
-        detective_guess = False
 
         print(self.night_votes)
 
@@ -409,45 +420,44 @@ class Game(threading.Thread):
             self.messages.get("Mafia_shot").edit_text(
                 text="Bot chose randomly " + self.get_citizens()[r].get_markdown_call(), parse_mode="MarkDown")
 
-        if self.night_votes.get("Doctor") is None:
+        if self.night_votes.get("Doctor") is None and doctor_player is not None:
             r = random.randrange(0, len(self.get_alive_players()))
             self.night_votes.update(
                 {"Doctor": self.get_alive_players()[r].user_id})
             self.messages.get("Doctor").edit_text(
                 text="Bot chose randomly " + self.get_alive_players()[r].get_markdown_call(), parse_mode="MarkDown")
 
-        # if self.night_votes.get("Sniper") is None:
-        #     self.messages.get("Sniper").edit_text(
-        #         text="You didnt choose anyone to snipe him")
-        if self.night_votes.get("Detective") is None:
+        if self.night_votes.get("Sniper") is None and sniper_player is not None:
+            self.messages.get("Sniper").edit_text(
+                text="You didnt choose anyone to snipe him")
+
+        if self.night_votes.get("Detective") is None and detective_player is not None:
             r = random.randrange(
                 0, len(self.get_players_without_detect()))
             self.night_votes.update(
                 {"Detective": self.get_players_without_detect()[r].user_id})
             self.messages.get("Detective").edit_text(
-                text="Bot chose randomly " + self.get_players_without_detect()[r].get_markdown_call(),
+                text="Bot chose randomly " +
+                self.get_players_without_detect()[r].get_markdown_call(),
                 parse_mode="MarkDown")
         print(self.night_votes)
 
-        if str(self.night_votes.get("Mafia_shot")) == str(self.night_votes.get("Doctor")):
+        if doctor_player is not None and str(self.night_votes.get("Mafia_shot")) == str(self.night_votes.get("Doctor")):
             mafia_kill = False
-        if self.get_player_by_id(int(self.night_votes.get("Detective"))).role == Roles.Mafia:
-            detective_guess = True
 
-        if self.get_player_by_id(self.night_votes.get("Sniper")) is not None and (self.get_player_by_id(int(
-                self.night_votes.get("Sniper"))).role == Roles.Mafia):
-            sniper_kill = 1
-        elif self.get_player_by_id(self.night_votes.get("Sniper")) is not None:
-            sniper_kill = 2
+        if detective_player is not None:
+            if self.get_player_by_id(int(self.night_votes.get("Detective"))).role == Roles.Mafia:
+                context.bot.send_message(
+                    chat_id=detective_player.user_id, text="You guessed right!")
+            else:
+                context.bot.send_message(
+                    chat_id=detective_player.user_id, text="You guessed wrong!")
 
-        if mafia_kill:
-            context.bot.send_message(
-                chat_id=self.group_chat_id,
-                text=self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).name + "☠️ died last night!!")
-            self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).is_alive = False
-        else:
-            context.bot.send_message(
-                chat_id=self.group_chat_id, text="Nobody died last night!!")
+        if self.get_player_by_id(self.night_votes.get("Sniper")) is not None:
+            if self.get_player_by_id(int(self.night_votes.get("Sniper"))).role == Roles.Mafia:
+                sniper_kill = 1
+            else:
+                sniper_kill = 2
 
         if sniper_kill == 1 and self.night_votes.get("Sniper") is not None:
             context.bot.send_message(
@@ -462,20 +472,24 @@ class Game(threading.Thread):
                     context.bot.send_message(
                         chat_id=p.user_id, text="Your new Mafia Rank : " + str(p.mafia_rank))
         elif sniper_kill == 2:
-            for player in self.get_alive_players():
-                if player.role == Roles.Sniper:
-                    context.bot.send_message(
-                        chat_id=self.group_chat_id, text=player.name + "☠️ died last night!!")
-                    player.is_alive = False
+            context.bot.send_message(
+                chat_id=self.group_chat_id, text=sniper_player.name + "☠️ died last night!!")
+            sniper_player.is_alive = False
 
-        for player in self.get_alive_players():
-            if player.role == Roles.Detective:
-                if detective_guess:
-                    context.bot.send_message(
-                        chat_id=player.user_id, text="You guessed right!")
-                else:
-                    context.bot.send_message(
-                        chat_id=player.user_id, text="You guessed wrong!")
+        if mafia_kill:
+            context.bot.send_message(
+                chat_id=self.group_chat_id,
+                text=self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).name + "☠️ died last night!!")
+            self.get_player_by_id(
+                int(self.night_votes.get("Mafia_shot"))).is_alive = False
+        else:
+            context.bot.send_message(
+                chat_id=self.group_chat_id, text="Nobody died last night!!")
+
+        self.night_votes = {"Mafia_shot": None,
+                            "Detective": None, "Doctor": None, "Sniper": None}
+        self.messages = {"Mafia_shot": None,
+                         "Detective": None, "Doctor": None, "Sniper": None}
 
     def night(self, context: telegram.ext.CallbackContext):
         self.state = GameState.Night
@@ -507,10 +521,10 @@ class Game(threading.Thread):
         for player in self.players:
             if player.mafia_rank == 0:
                 text = text + "🙂 " + player.get_markdown_call() + " " + player.role.name + \
-                       player.emoji + "\n"
+                    player.emoji + "\n"
             else:
                 text = text + "😈 " + player.get_markdown_call() + " " + player.role.name + \
-                       player.emoji + "\n"
+                    player.emoji + "\n"
         context.bot.send_message(
             chat_id=self.group_chat_id, text=text, parse_mode="Markdown")
 
@@ -552,4 +566,3 @@ class Game(threading.Thread):
 
         if self.result_game(context):
             self.day(context)
-
