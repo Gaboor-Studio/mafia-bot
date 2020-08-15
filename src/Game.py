@@ -243,7 +243,7 @@ class Game(threading.Thread):
             r = random.randrange(0, len(self.just_players))
             self.just_players[r].role = Roles.GodFather
             self.mafias.append(self.just_players[r])
-            self.just_players[r].emoji = "🧛"
+            self.just_players[r].emoji = "🚬🧛"
             mafia_number = mafia_number + 1
             self.just_players[r].mafia_rank = mafia_number
             self.just_players[r].send_role(context)
@@ -453,11 +453,14 @@ class Game(threading.Thread):
                 context.bot.send_message(
                     chat_id=detective_player.user_id, text="You guessed wrong!")
 
-        if self.get_player_by_id(int(self.night_votes.get("Sniper"))) is not None:
+        if self.night_votes.get("Sniper") is not None:
             if self.get_player_by_id(int(self.night_votes.get("Sniper"))).role == Roles.Mafia:
                 sniper_kill = 1
-            else:
+            elif self.get_player_by_id(int(self.night_votes.get("Sniper"))).role != Roles.GodFather:
                 sniper_kill = 2
+        if sniper_player is not None and str(
+                self.night_votes.get("Sniper")) == str(self.night_votes.get("Doctor")) and sniper_kill == 1:
+            sniper_kill = 0
 
         kill_list = []
         if sniper_kill == 1:
@@ -494,7 +497,7 @@ class Game(threading.Thread):
         if sniper_kill == 1:
             message += "Congratulations! Our sniper killed a mafia successfully :)"
 
-        context.bot.send_message(chat_id=self.group_chat_id, text=message)
+        context.bot.send_message(chat_id=self.group_chat_id, text=message, parse_mode="Markdown")
 
         self.night_votes = {"Mafia_shot": None,
                             "Detective": None, "Doctor": None, "Sniper": None}
