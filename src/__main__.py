@@ -9,7 +9,7 @@ from Poll import Poll
 import traceback
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
-TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
+TOKEN = '1349950692:AAEzvxgOa5jm3gUO_sbJ9BZW2v8UkfRoWuo'
 # TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
@@ -185,9 +185,17 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
                                 parse_mode="MarkDown")
 
 
+@just_for_pv
+def help_me(update, context):
+    with open("help.md", 'r') as file:
+        context.bot.send_message(
+            chat_id=update.message.chat_id, text=file.read(), parse_mode="Markdown")
+
+
 dispatcher = updater.dispatcher
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(CommandHandler("new", new_game))
+dispatcher.add_handler(CommandHandler("help", help_me))
 dispatcher.add_handler(CommandHandler("end", end_game))
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler('join', join))
