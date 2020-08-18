@@ -12,6 +12,7 @@ class Roles(enum.Enum):
     Doctor = 3
     Detective = 4
     Sniper = 5
+    Bulletproof = 6
 
 
 class Player:
@@ -36,6 +37,7 @@ class Player:
         self.sticker = None
         self.role = None
         self.mafia_rank = 0
+        self.shield = False
 
     def equals(self, player):
         return self.user_name == player.user_name
@@ -71,5 +73,8 @@ class Player:
         elif self.role == Roles.Sniper:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEVNfE0iiRs6BL7yucCAoP5bH6wLv4QACHwAD1ul3K_8BpWyNZM2OGgQ")
+        elif self.role == Roles.Bulletproof:
+            context.bot.send_sticker(chat_id=self.user_id,
+                                     sticker="CAACAgQAAxkBAAEBN-BfPBhwBqNMe7_Ux36oWZh5AqVjAANKAAPW6XcrCCyNXGC3bJUaBA")
         context.bot.send_message(chat_id=self.user_id,
                                  text=self.role.name + self.emoji)

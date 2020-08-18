@@ -274,6 +274,16 @@ class Game(threading.Thread):
         self.citizens.append(self.just_players[r])
         self.just_players[r].send_role(context)
         self.just_players.pop(r)
+        # Bulletproof
+        """change the number to 9"""
+        if len(self.players) > 3:
+            r = random.randrange(0, len(self.just_players))
+            self.just_players[r].role = Roles.Bulletproof
+            self.just_players[r].emoji = "🛡‍"
+            self.just_players[r].shield = True
+            self.citizens.append(self.just_players[r])
+            self.just_players[r].send_role(context)
+            self.just_players.pop(r)
         # Sniper
         if len(self.players) > 8:
             self.sniper_shots = mafia_number - 2
@@ -367,24 +377,38 @@ class Game(threading.Thread):
                         chat_id=self.group_chat_id, text="Nobody died today.there is no player with more than half votes!!")
                 elif len(final_kill) == 1:
                     player = final_kill[0]
-                    context.bot.send_message(
-                        chat_id=self.group_chat_id,
-                        text=player.get_markdown_call() + "☠ died. Everybody listen to his final will",
-                        parse_mode="Markdown")
-                    if player.role == Roles.Mafia or player.role == Roles.GodFather:
-                        self.update_mafia_ranks(player)
-                    time.sleep(5)
-                    player.is_alive = False
+                    if player.shield:
+                        player.shield = False
+                        """Fix the message text"""
+                        context.bot.send_message(
+                            chat_id=self.group_chat_id,
+                            text="Nobody died today.there is no player with more than half votes!!")
+                    else:
+                        context.bot.send_message(
+                            chat_id=self.group_chat_id,
+                            text=player.get_markdown_call() + "☠ died. Everybody listen to his final will",
+                            parse_mode="Markdown")
+                        if player.role == Roles.Mafia or player.role == Roles.GodFather:
+                            self.update_mafia_ranks(player)
+                        time.sleep(5)
+                        player.is_alive = False
                 else:
                     players = self.find_player_with_most_vote()
                     if len(players) == 1:
                         player = players[0]
-                        context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
-                        ) + "☠️ died. Everybody listen to his final will", parse_mode="Markdown")
-                        time.sleep(5)
-                        player.is_alive = False
-                        if player.role == Roles.Mafia or player.role == Roles.GodFather:
-                            self.update_mafia_ranks(player)
+                        if player.shield:
+                            player.shield = False
+                            """Fix the message text"""
+                            context.bot.send_message(
+                                chat_id=self.group_chat_id,
+                                text="Nobody died today.there is no player with more than half votes!!")
+                        else:
+                            context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
+                            ) + "☠️ died. Everybody listen to his final will", parse_mode="Markdown")
+                            time.sleep(5)
+                            player.is_alive = False
+                            if player.role == Roles.Mafia or player.role == Roles.GodFather:
+                                self.update_mafia_ranks(player)
                     else:
                         context.bot.send_message(
                             chat_id=self.group_chat_id,
@@ -433,6 +457,10 @@ class Game(threading.Thread):
 
         if doctor_player is not None and str(self.night_votes.get("Mafia_shot")) == str(self.night_votes.get("Doctor")):
             mafia_kill = False
+
+        if self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).shield:
+            mafia_kill = False
+            self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).shield = False
 
         if detective_player is not None:
             if self.get_player_by_id(int(self.night_votes.get("Detective"))).role == Roles.Mafia:
