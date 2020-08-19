@@ -1,7 +1,6 @@
 import telegram
 
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler
-from telegram.ext.filters import Filters
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from Game import Game, GameState
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 import requests
@@ -10,9 +9,11 @@ from Player import Player, Roles
 from Poll import Poll
 import traceback
 import codecs
+import os
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
-TOKEN = '1349950692:AAEzvxgOa5jm3gUO_sbJ9BZW2v8UkfRoWuo'
+TOKEN = '1349950692:AAG2U5hhc95R3M4IOoxoQnsnfJ3V02NiRA4'
+
 # TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
@@ -40,7 +41,7 @@ def admin_permission(func):
         group_id = update.effective_chat.id
         user_id = update.message.from_user['id']
         role = context.bot.get_chat_member(group_id, user_id).status
-        if role == 'creator' or role == 'administrator':
+        if role == 'creator' or role == 'administrator' or group_id == user_id:
             func(update, context)
         else:
             update.message.reply_text(
@@ -96,6 +97,7 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
     context.user_data["state"] = None
     context.user_data["game"] = None
     context.user_data["lang"] = "en"
+    '''need to add database'''
     update.message.reply_text("Hi!")
 
 
@@ -195,22 +197,32 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
                                 parse_mode="MarkDown")
 
 
-@just_for_pv
 def help_me(update, context):
-    with codecs.open("help.md", 'r', encoding='utf8') as file:
+    language = get_lang(update, context)
+    with codecs.open(os.path.join("Lang", language, "help"), 'r', encoding='utf8') as file:
         context.bot.send_message(
             chat_id=update.message.chat_id, text=file.read(), parse_mode="Markdown")
 
 
+@admin_permission
 def lang(update, context):
     if update.message.from_user.id == update.effective_chat.id:
         context.user_data["state"] = "lang"
     else:
-        context.group_data["state"] = "lang"
+        context.chat_data["state"] = "lang"
+    print("here")
     keyboard = ReplyKeyboardMarkup(
         [["English", "فارسی"]], resize_keyboard=True, one_time_keyboard=True)
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Please Choose your language:", reply_markup=keyboard)
+
+
+def get_lang(update, context):
+    if update.message.from_user.id == update.effective_chat.id:
+        dic = context.user_data
+    else:
+        dic = context.chat_data
+    return dic["lang"]
 
 
 def text_handler(update, context):
@@ -218,25 +230,29 @@ def text_handler(update, context):
     if update.message.from_user.id == update.effective_chat.id:
         dic = context.user_data
     else:
-        dic = context.group_data
+        dic = context.chat_data
     if dic["state"] == "lang":
         print(update.effective_message.text)
         if update.effective_message.text == "English":
             dic["lang"] = "en"
         else:
             dic["lang"] = "fa"
-    dic.user["state"] = None
+        context.bot.send_message(chat_id=update.effective_chat.id, text="✅")
+    elif dic["state"] == None:
+        context.bot.send_message(
+            chat_id=update.effective_chat.id, text="You have not sent any command!")
+    dic["state"] = None
 
 
-@testing
 def new_member(update, context):
     print("hello")
     for member in update.message.new_chat_members:
         if member.id == context.bot.id:
-            context.group_data["game"] = None
-            context.group_data["state"] = None
-            context.group_data["lang"] = None
-            print(context.group_data)
+            context.chat_data["game"] = None
+            context.chat_data["state"] = None
+            context.chat_data["lang"] = "en"
+            print(context.chat_data)
+            '''need to add database'''
 
 
 dispatcher = updater.dispatcher
@@ -248,7 +264,7 @@ dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler('join', join))
 dispatcher.add_handler(CommandHandler('leave', leave))
 dispatcher.add_handler(CommandHandler('lang', lang))
-dispatcher.add_handler(MessageHandler(Filters.all, text_handler))
 dispatcher.add_handler(MessageHandler(
     Filters.status_update.new_chat_members, new_member))
+dispatcher.add_handler(MessageHandler(Filters.all, text_handler))
 updater.start_polling()

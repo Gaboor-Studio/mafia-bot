@@ -396,7 +396,7 @@ class Game(threading.Thread):
                         """Fix the message text"""
                         context.bot.send_message(
                             chat_id=self.group_chat_id,
-                            text="Nobody died today.there is no player with more than half votes!!")
+                            text=f"{player.get_markdown_call()} is the *Bulletproof* and will lose their shield. since now mafia can kill them at night.  \nReady for the next night!", parse_mode="Markdown")
                     else:
                         context.bot.send_message(
                             chat_id=self.group_chat_id,
@@ -415,7 +415,7 @@ class Game(threading.Thread):
                             """Fix the message text"""
                             context.bot.send_message(
                                 chat_id=self.group_chat_id,
-                                text="Nobody died today.there is no player with more than half votes!!")
+                                text=f"{player.get_markdown_call()} is the *Bulletproof* and will lose their shield. since now mafia can kill them at night.  \nReady for the next night!", parse_mode="Markdown")
                         else:
                             context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
                             ) + "☠️ died. Everybody listen to his final will", parse_mode="Markdown")
@@ -478,7 +478,8 @@ class Game(threading.Thread):
 
         if self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).shield:
             mafia_kill = False
-            self.get_player_by_id(int(self.night_votes.get("Mafia_shot"))).shield = False
+            self.get_player_by_id(
+                int(self.night_votes.get("Mafia_shot"))).shield = False
 
         if detective_player is not None:
             if self.get_player_by_id(int(self.night_votes.get("Detective"))).role == Roles.Mafia:
