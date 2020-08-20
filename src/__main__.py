@@ -7,22 +7,26 @@ import requests
 
 from Player import Player, Roles
 from Poll import Poll
+from LangUtils import get_data, get_lang
 import traceback
 import codecs
 import os
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
-TOKEN = '1349950692:AAG2U5hhc95R3M4IOoxoQnsnfJ3V02NiRA4'
+TOKEN = '1349950692:AAHsbNHvUmS72Kkg823FF5rd-T1Oe4N5z3s'
 
 # TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
 
 
-def has_subscribed(user_id, chat_title):
+def has_subscribed(update, context):
+    user_id = update.message.from_user['id']
+    chat_title = update.effective_chat['title']
+    language = get_lang(update, context)
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    params = {'chat_id': user_id,
-              'text': f"Analyzing your request to join the mafia game in group {chat_title}"}
+    with codecs.open(os.path.join("Lang", language, "Analyzing"), 'r', encoding='utf8') as file:
+        params = {'chat_id': user_id, 'text': f"{file.read()} {chat_title}"}
     r = requests.get(url=url, params=params)
     return r.json()['ok']
 
@@ -44,8 +48,9 @@ def admin_permission(func):
         if role == 'creator' or role == 'administrator' or group_id == user_id:
             func(update, context)
         else:
-            update.message.reply_text(
-                "You dont have admin permission to run this command!")
+            language = get_lang(update, context)
+            with codecs.open(os.path.join("Lang", language, "AdminPermission"), 'r', encoding='utf8') as file:
+                update.message.reply_text(file.read())
 
     return wrapper_func
 
@@ -53,7 +58,9 @@ def admin_permission(func):
 def just_for_group(func):
     def wrapper_func(update, context):
         if update.effective_chat.id == update.message.from_user["id"]:
-            update.message.reply_text("This command is just for groups!")
+            language = get_lang(update, context)
+            with codecs.open(os.path.join("Lang", language, "JustForGroup"), 'r', encoding='utf8') as file:
+                update.message.reply_text(file.read())
         else:
             func(update, context)
 
@@ -63,7 +70,9 @@ def just_for_group(func):
 def just_for_pv(func):
     def wrapper_func(update, context):
         if update.effective_chat.id != update.message.from_user["id"]:
-            update.message.reply_text("This command is just for private chat!")
+            language = get_lang(update, context)
+            with codecs.open(os.path.join("Lang", language, "JustForPV"), 'r', encoding='utf8') as file:
+                update.message.reply_text(file.read())
         else:
             func(update, context)
 
@@ -76,20 +85,24 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_data = context.chat_data
     user = update.message.from_user
     user_data = context.user_data
+    language = get_lang(update, context)
     if "active_game" not in group_data.keys():
-        if has_subscribed(user['id'], update.effective_chat['title']):
-            game = Game(group_id, group_data, context)
+        if has_subscribed(update, context):
+            game = Game(group_id, group_data, context, update)
             group_data["active_game"] = game
             game.start()
             context.bot.send_sticker(chat_id=game.group_chat_id,
                                      sticker="CAACAgQAAxkBAAEBEGZfEajfE4ubecspTvk_h_MmLWldhwACFwAD1ul3K_CgFM5dUHoRGgQ")
-            update.message.reply_text("New game started")
-            game.join_game(user, user_data, update, context)
+
+            with codecs.open(os.path.join("Lang", language, "NewGame"), 'r', encoding='utf8') as file:
+                update.message.reply_text(file.read())
+            game.join_game(user, user_data)
         else:
-            update.message.reply_text(
-                "Please start the bot in private chat and try again!")
+            with codecs.open(os.path.join("Lang", language, "StartPV"), 'r', encoding='utf8') as file:
+                update.message.reply_text(file.read())
     else:
-        update.message.reply_text("This group has an unfinished game!")
+        with codecs.open(os.path.join("Lang", language, "UnfinishedGame"), 'r', encoding='utf8') as file:
+            update.message.reply_text(file.read())
 
 
 @just_for_pv
@@ -97,8 +110,11 @@ def start(update: telegram.Update, context: telegram.ext.CallbackContext):
     context.user_data["state"] = None
     context.user_data["game"] = None
     context.user_data["lang"] = "en"
+    context.user_data["lang_message"] = []
     '''need to add database'''
-    update.message.reply_text("Hi!")
+    language = get_lang(update, context)
+    with codecs.open(os.path.join("Lang", language, "Start"), 'r', encoding='utf8') as file:
+        update.message.reply_text(file.read())
 
 
 @just_for_group
@@ -107,20 +123,31 @@ def join(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_data = context.chat_data
     user_data = context.user_data
     user = update.message.from_user
+    language = get_lang(update, context)
     if "active_game" in group_data.keys():
 
-        if has_subscribed(user['id'], update.effective_chat['title']):
+        if has_subscribed(update, context):
             group_game = group_data["active_game"]
-            if not group_game.is_started:
-                group_game.join_game(user, user_data, update, context)
+            if "active_game" not in user_data.keys():
+                group_game.join_game(user, user_data)
             else:
-                update.message.reply_text(
-                    "The game has started so you can't join the game!")
+                if user_data["active_game"] == group_game:
+                    with codecs.open(os.path.join("Lang", language, "AlreadyJoined"), 'r', encoding='utf8') as file:
+                        update.message.reply_markdown(file.read())
+                        context.bot.send_message(
+                            chat_id=user['id'], text=file.read())
+                else:
+                    with codecs.open(os.path.join("Lang", language, "AlreadyJoinedAnotherGroup"), 'r', encoding='utf8') as file:
+                        update.message.reply_markdown(file.read())
+                        context.bot.send_message(
+                            chat_id=user['id'], text=file.read())
+
         else:
-            update.message.reply_text(
-                "Please start the bot in private chat and try again!")
+            with codecs.open(os.path.join("Lang", language, "StartPV"), 'r', encoding='utf8') as file:
+                update.message.reply_text(file.read())
     else:
-        update.message.reply_text("There is no game in this group!")
+        with codecs.open(os.path.join("Lang", language, "NoGame"), 'r', encoding='utf8') as file:
+            update.message.reply_text(file.read())
 
 
 @just_for_group
@@ -128,26 +155,32 @@ def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
     group_data = context.chat_data
     user_data = context.user_data
+    language = get_lang(update, context)
     if "active_game" in group_data.keys():
         group_game = group_data["active_game"]
         if not group_game.is_started:
-            group_game.leave_game(user, user_data, update)
+            group_game.leave_game(user, user_data)
         else:
-            update.message.reply_text(
-                "The game has started so you can't leave the game!")
+            with codecs.open(os.path.join("Lang", language, "HasStartedLeave"), 'r', encoding='utf8') as file:
+                update.message.reply_text(file.read())
+
     else:
-        update.message.reply_text("There is no game in this group!")
+        with codecs.open(os.path.join("Lang", language, "NoGame"), 'r', encoding='utf8') as file:
+            update.message.reply_text(file.read())
 
 
 @admin_permission
 @just_for_group
 def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_data = context.chat_data
+    language = get_lang(update, context)
     if "active_game" in group_data.keys():
-        group_data["active_game"].delete_game(context)
-        update.message.reply_text("Game ended")
+        group_data["active_game"].delete_game()
+        with codecs.open(os.path.join("Lang", language, "EndGame"), 'r', encoding='utf8') as file:
+            update.message.reply_text(file.read())
     else:
-        update.message.reply_text("There is no game in this group!")
+        with codecs.open(os.path.join("Lang", language, "NoGame"), 'r', encoding='utf8') as file:
+            update.message.reply_text(file.read())
 
 
 def button(update: telegram.Update, context: telegram.ext.CallbackContext):
@@ -199,58 +232,62 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
 
 def help_me(update, context):
     language = get_lang(update, context)
-    with codecs.open(os.path.join("Lang", language, "help"), 'r', encoding='utf8') as file:
+    with codecs.open(os.path.join("Lang", language, "Help"), 'r', encoding='utf8') as file:
         context.bot.send_message(
             chat_id=update.message.chat_id, text=file.read(), parse_mode="Markdown")
 
 
 @admin_permission
 def lang(update, context):
-    if update.message.from_user.id == update.effective_chat.id:
-        context.user_data["state"] = "lang"
-    else:
-        context.chat_data["state"] = "lang"
-    print("here")
+    get_data(update, context)["state"] = "lang"
     keyboard = ReplyKeyboardMarkup(
         [["English", "فارسی"]], resize_keyboard=True, one_time_keyboard=True)
-    context.bot.send_message(chat_id=update.effective_chat.id,
-                             text="Please Choose your language:", reply_markup=keyboard)
+    language = get_lang(update, context)
+    with codecs.open(os.path.join("Lang", language, "ChooseLang"), 'r', encoding='utf8') as file:
+        message = context.bot.send_message(chat_id=update.message.chat_id, text=file.read(
+        ), parse_mode="Markdown", reply_markup=keyboard)
+        get_data(update, context)["lang_message"].append(message)
+
+
+def get_data(update, context):
+    if update.message.from_user.id == update.effective_chat.id:
+        dic = context.user_data
+    else:
+        dic = context.chat_data
+    return dic
 
 
 def get_lang(update, context):
-    if update.message.from_user.id == update.effective_chat.id:
-        dic = context.user_data
-    else:
-        dic = context.chat_data
-    return dic["lang"]
+    return get_data(update, context)["lang"]
 
 
 def text_handler(update, context):
-    dic = {}
-    if update.message.from_user.id == update.effective_chat.id:
-        dic = context.user_data
-    else:
-        dic = context.chat_data
+    dic = get_data(update, context)
     if dic["state"] == "lang":
-        print(update.effective_message.text)
         if update.effective_message.text == "English":
             dic["lang"] = "en"
         else:
             dic["lang"] = "fa"
-        context.bot.send_message(chat_id=update.effective_chat.id, text="✅")
+        for message in dic["lang_message"]:
+            message.delete()
+        dic["lang_message"] = []
+        with codecs.open(os.path.join("Lang", dic["lang"], "ChangeLang"), 'r', encoding='utf8') as file:
+            context.bot.send_message(
+                chat_id=update.effective_chat.id, text=file.read(), parse_mode="Markdown", reply_markup=None)
     elif dic["state"] == None:
-        context.bot.send_message(
-            chat_id=update.effective_chat.id, text="You have not sent any command!")
+        with codecs.open(os.path.join("Lang", dic["lang"], "NoCommand"), 'r', encoding='utf8') as file:
+            context.bot.send_message(
+                chat_id=update.message.chat_id, text=file.read())
     dic["state"] = None
 
 
 def new_member(update, context):
-    print("hello")
     for member in update.message.new_chat_members:
         if member.id == context.bot.id:
             context.chat_data["game"] = None
             context.chat_data["state"] = None
             context.chat_data["lang"] = "en"
+            context.chat_data["lang_message"] = []
             print(context.chat_data)
             '''need to add database'''
 

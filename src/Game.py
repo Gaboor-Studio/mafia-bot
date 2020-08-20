@@ -2,13 +2,15 @@ import telegram
 import random
 from Player import Player, Roles
 from telegram.ext import Updater
-from telegram.ext.dispatcher import run_async
 from Poll import Poll
 import time
 import enum
 import threading
 import ctypes
 import traceback
+from LangUtils import get_data, get_lang
+import os
+import codecs
 
 
 class GameState(enum.Enum):
@@ -18,7 +20,7 @@ class GameState(enum.Enum):
 
 class Game(threading.Thread):
 
-    def __init__(self, group_chat_id, group_data, context):
+    def __init__(self, group_chat_id, group_data, context, update):
         threading.Thread.__init__(self)
         self.night_votes = {"Mafia_shot": None,
                             "Detective": None, "Doctor": None, "Sniper": None}
@@ -37,6 +39,7 @@ class Game(threading.Thread):
         self.state = GameState.Day
         self.print_result = False
         self.context = context
+        self.update = update
         self.messages = {"Mafia_shot": None,
                          "Detective": None, "Doctor": None, "Sniper": None}
         self.sniper_shots = 0
@@ -44,25 +47,21 @@ class Game(threading.Thread):
 
     def run(self):
         try:
+            language = get_lang(self.update, self.context)
+            t = 150
+            for i in range(4):
+                time.sleep(30)
+                t -= 30
+                with codecs.open(os.path.join("Lang", language, f'{t}sec'), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=self.group_chat_id, text=file.read())
             time.sleep(30)
-            self.context.bot.send_message(
-                chat_id=self.group_chat_id, text="120 seconds left...")
-            time.sleep(30)
-            self.context.bot.send_message(
-                chat_id=self.group_chat_id, text="90 seconds left...")
-            time.sleep(30)
-            self.context.bot.send_message(
-                chat_id=self.group_chat_id, text="60 seconds left...")
-            time.sleep(30)
-            self.context.bot.send_message(
-                chat_id=self.group_chat_id, text="30 seconds left...")
-            time.sleep(30)
-            self.start_game(self.context)
+            self.start_game()
         except Exception as e:
             traceback.print_exc(e)
         finally:
             if self.is_finished:
-                self.delete_game(self.context)
+                self.delete_game()
 
     def get_thread_id(self):
         if hasattr(self, '_thread_id'):
@@ -121,7 +120,7 @@ class Game(threading.Thread):
                 city.append(player)
         return city
 
-    def get_player_by_role(self, role):
+    def get_player_by_role(self, role: Roles):
         for player in self.get_alive_players():
             if player.role == role:
                 return player
@@ -134,45 +133,39 @@ class Game(threading.Thread):
                 city.append(player.name)
         return city
 
-    def join_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data,
-                  update: telegram.Update, context: telegram.ext.CallbackContext):
-        if "active_game" not in user_data.keys():
+    def join_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
+        language = get_lang(self.update, self.context)
+        if not self.is_started:
             user_data["active_game"] = self
             player = Player(user.full_name, user.username,
                             user.id, user_data, self)
             self.players.append(player)
             self.just_players.append(player)
-            update.message.reply_markdown(
+            self.update.message.reply_markdown(
                 "Current players:\n" + self.get_list())
 
-            context.bot.send_message(
-                chat_id=user['id'], text="You joined the game successfully")
+            with codecs.open(os.path.join("Lang", language, "SuccessfullyJoin"), 'r', encoding='utf8') as file:
+                self.context.bot.send_message(
+                    chat_id=user['id'], text=file.read())
         else:
-            if user_data["active_game"] == self:
-                update.message.reply_markdown(
-                    "You have already joined the game!")
-                context.bot.send_message(
-                    chat_id=user['id'], text="You have already joined the game")
-            else:
-                update.message.reply_markdown(
-                    "You have already joined a game in another group!")
-                context.bot.send_message(
-                    chat_id=user['id'], text="You have already joined a game in another group")
+            with codecs.open(os.path.join("Lang", language, "HasStartedJoin"), 'r', encoding='utf8') as file:
+                self.update.message.reply_text(file.read())
+                self.context.bot.send_message(
+                    chat_id=user['id'], text=file.read())
 
-    def leave_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data,
-                   update: telegram.Update):
+    def leave_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
                 del user_data["active_game"]
                 player = self.get_player_by_id(user.id)
-                # del self.votes[player.user_name]
                 self.players.remove(player)
                 self.just_players.remove(player)
-                update.message.reply_text("You left the game successfully!")
+                self.update.message.reply_text(
+                    "You left the game successfully!")
             else:
-                update.message.reply_text("You are not in this game!")
+                self.update.message.reply_text("You are not in this game!")
         else:
-            update.message.reply_text("You have not joined a game yet!")
+            self.update.message.reply_text("You have not joined a game yet!")
 
     def get_alive_players(self):
         alive = []
@@ -219,38 +212,30 @@ class Game(threading.Thread):
                 without_sniper.append(player)
         return without_sniper
 
-    def start_game(self, context: telegram.ext.CallbackContext):
-        self.is_started = True
-        group_data = self.group_data
-        if "active_game" in group_data.keys():
-            game = group_data["active_game"]
-            if len(game.players) > 2:
-                game.set_players_roles(context)
-                context.bot.send_message(
-                    chat_id=self.group_chat_id, text='Game has been started!')
-                self.is_started = True
-                self.reset_info()
-                while self.result_game(context):
-                    self.turn(context)
-                self.is_finished = True
-
-            else:
-                context.bot.send_message(chat_id=self.group_chat_id, text='Game is canceled because there is not '
-                                                                          'enough players. Invite your friends to'
-                                                                          ' join.')
-                self.delete_game(context)
+    def start_game(self):
+        if len(self.players) > 2:
+            self.set_players_roles()
+            self.context.bot.send_message(
+                chat_id=self.group_chat_id, text='Game has been started!')
+            self.is_started = True
+            self.reset_info()
+            while self.result_game():
+                self.turn()
+            self.is_finished = True
 
         else:
-            context.bot.send_message(
-                chat_id=self.group_chat_id, text='There is no game in this group!')
+            self.context.bot.send_message(chat_id=self.group_chat_id, text='Game is canceled because there is not '
+                                          'enough players. Invite your friends to'
+                                          ' join.')
+            self.is_finished = True
 
-    def delete_game(self, context: telegram.ext.CallbackContext):
+    def delete_game(self):
         for player in self.players:
             del player.user_data["active_game"]
         del self.group_data["active_game"]
         self.raise_exception()
 
-    def set_players_roles(self, context: telegram.ext.CallbackContext):
+    def set_players_roles(self):
         mafia_number = 0
         # GodFather
         if len(self.players) > 5:
@@ -260,7 +245,7 @@ class Game(threading.Thread):
             self.just_players[r].emoji = "🚬🧛"
             mafia_number = mafia_number + 1
             self.just_players[r].mafia_rank = mafia_number
-            self.just_players[r].send_role(context)
+            self.just_players[r].send_role(self.context)
             self.just_players.pop(r)
         # Other Mafias
         for i in range(int(len(self.players) / 3) - mafia_number):
@@ -270,21 +255,21 @@ class Game(threading.Thread):
             self.mafias.append(self.just_players[r])
             mafia_number = mafia_number + 1
             self.just_players[r].mafia_rank = mafia_number
-            self.just_players[r].send_role(context)
+            self.just_players[r].send_role(self.context)
             self.just_players.pop(r)
         # Doctor
         r = random.randrange(0, len(self.just_players))
         self.just_players[r].role = Roles.Doctor
         self.just_players[r].emoji = "👨‍⚕️‍"
         self.citizens.append(self.just_players[r])
-        self.just_players[r].send_role(context)
+        self.just_players[r].send_role(self.context)
         self.just_players.pop(r)
         # Detective
         r = random.randrange(0, len(self.just_players))
         self.just_players[r].role = Roles.Detective
         self.just_players[r].emoji = "👮‍"
         self.citizens.append(self.just_players[r])
-        self.just_players[r].send_role(context)
+        self.just_players[r].send_role(self.context)
         self.just_players.pop(r)
         # Bulletproof
         """change the number to 9"""
@@ -294,7 +279,7 @@ class Game(threading.Thread):
             self.just_players[r].emoji = "🛡‍"
             self.just_players[r].shield = True
             self.citizens.append(self.just_players[r])
-            self.just_players[r].send_role(context)
+            self.just_players[r].send_role(self.context)
             self.just_players.pop(r)
         # Sniper
         if len(self.players) > 8:
@@ -303,24 +288,24 @@ class Game(threading.Thread):
             self.just_players[r].role = Roles.Sniper
             self.just_players[r].emoji = "🕸‍"
             self.citizens.append(self.just_players[r])
-            self.just_players[r].send_role(context)
+            self.just_players[r].send_role(self.context)
             message = f"You have *{self.sniper_shots}* shot"
             if self.sniper_shots > 1:
                 message += "s. Remember to use them carefully!"
             else:
                 message += ". Remember to use it carefully!"
-            context.bot.send_message(
-                chat_id=self.just_players[r].user_id, text=message)
+            self.context.bot.send_message(
+                chat_id=self.just_players[r].user_id, text=message, parse_mode="Markdown")
             self.just_players.pop(r)
         # Citizens
         for player in self.just_players:
             player.role = Roles.Citizen
             self.citizens.append(player)
             player.emoji = "👨‍💼"
-            player.send_role(context)
+            player.send_role(self.context)
         self.just_players.clear()
 
-    def notify_mafias(self, context: telegram.ext.CallbackContext):
+    def notify_mafias(self):
         for mafia in self.mafias:
             if len(self.mafias) == 2:
                 text = "Your teammate is:\n"
@@ -329,15 +314,15 @@ class Game(threading.Thread):
             for teammate in self.mafias:
                 if mafia.user_id != teammate.user_id:
                     text += teammate.get_markdown_call() + "  \n"
-            context.bot.send_message(
+            self.context.bot.send_message(
                 chat_id=mafia.user_id, text=text, parse_mode="Markdown")
 
-    def send_day_votes(self, context: telegram.ext.CallbackContext, players_list):
+    def send_day_votes(self, players_list):
         for player in players_list:
             poll = Poll("Do you want to kill " + player.get_markdown_call() + "?  \nVoters:" + "🙋‍♂️", ["YES", "NO"],
                         self.group_chat_id, "day")
-            poll_message = poll.send_poll(context)
-            time_message = context.bot.send_message(
+            poll_message = poll.send_poll(self.context)
+            time_message = self.context.bot.send_message(
                 chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
             time.sleep(15)
             text = f"Votes for {player.get_markdown_call()}:  \n\nYes: "
@@ -355,20 +340,20 @@ class Game(threading.Thread):
             time_message.delete()
             self.voters = {}
 
-    def update_mafia_ranks(self, context, dead_mafia):
+    def update_mafia_ranks(self, dead_mafia):
         for p in self.get_alive_players():
             if p.mafia_rank > dead_mafia.mafia_rank:
                 p.mafia_rank = p.mafia_rank - 1
-                context.bot.send_message(
+                self.context.bot.send_message(
                     chat_id=p.user_id, text="A mafia player is dead. since now your mafia rank is : " + str(p.mafia_rank))
 
-    def day(self, context: telegram.ext.CallbackContext):
+    def day(self):
         self.state = GameState.Day
         for player in self.get_alive_players():
-            player.talk(self.group_chat_id, context)
+            player.talk(self.group_chat_id, self.context)
             time.sleep(5)
         if self.day_night_counter != 0:
-            self.send_day_votes(context, self.get_alive_players())
+            self.send_day_votes(self.get_alive_players())
             kill_players = self.find_votes_more_than_half()
             message = ""
             if len(kill_players) != 0:
@@ -377,33 +362,33 @@ class Game(threading.Thread):
                     message += player.get_markdown_call() + "  \n"
             else:
                 message = "It seems we have no player to defend themselves."
-            context.bot.send_message(
+            self.context.bot.send_message(
                 chat_id=self.group_chat_id, text=message, parse_mode="Markdown")
             self.reset_info()
             for player in kill_players:
-                player.talk(self.group_chat_id, context)
+                player.talk(self.group_chat_id, self.context)
                 time.sleep(5)
             if len(kill_players) >= 1:
-                self.send_day_votes(context, kill_players)
+                self.send_day_votes(kill_players)
                 final_kill = self.find_votes_more_than_half()
                 if len(final_kill) == 0:
-                    context.bot.send_message(
+                    self.context.bot.send_message(
                         chat_id=self.group_chat_id, text="Nobody died today.there is no player with more than half votes!!")
                 elif len(final_kill) == 1:
                     player = final_kill[0]
                     if player.shield:
                         player.shield = False
                         """Fix the message text"""
-                        context.bot.send_message(
+                        self.context.bot.send_message(
                             chat_id=self.group_chat_id,
                             text=f"{player.get_markdown_call()} is the *Bulletproof* and will lose their shield. since now mafia can kill them at night.  \nReady for the next night!", parse_mode="Markdown")
                     else:
-                        context.bot.send_message(
+                        self.context.bot.send_message(
                             chat_id=self.group_chat_id,
                             text=player.get_markdown_call() + "☠ died. Everybody listen to his final will",
                             parse_mode="Markdown")
                         if player.role == Roles.Mafia or player.role == Roles.GodFather:
-                            self.update_mafia_ranks(context, player)
+                            self.update_mafia_ranks(player)
                         time.sleep(5)
                         player.is_alive = False
                 else:
@@ -413,28 +398,28 @@ class Game(threading.Thread):
                         if player.shield:
                             player.shield = False
                             """Fix the message text"""
-                            context.bot.send_message(
+                            self.context.bot.send_message(
                                 chat_id=self.group_chat_id,
                                 text=f"{player.get_markdown_call()} is the *Bulletproof* and will lose their shield. since now mafia can kill them at night.  \nReady for the next night!", parse_mode="Markdown")
                         else:
-                            context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
+                            self.context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
                             ) + "☠️ died. Everybody listen to his final will", parse_mode="Markdown")
                             time.sleep(5)
                             player.is_alive = False
                             if player.role == Roles.Mafia or player.role == Roles.GodFather:
-                                self.update_mafia_ranks(context, player)
+                                self.update_mafia_ranks(player)
                     else:
-                        context.bot.send_message(
+                        self.context.bot.send_message(
                             chat_id=self.group_chat_id,
                             text="Nobody died today because of players with same number of votes!!")
                         time.sleep(5)
             else:
-                context.bot.send_message(
+                self.context.bot.send_message(
                     chat_id=self.group_chat_id, text="Nobody died today.there is no player with more than half votes!!\nReady for the next night!")
                 time.sleep(5)
             self.reset_info()
 
-    def night_result(self, context: telegram.ext.CallbackContext):
+    def night_result(self):
         detective_player = self.get_player_by_role(Roles.Detective)
         doctor_player = self.get_player_by_role(Roles.Doctor)
         sniper_player = self.get_player_by_role(Roles.Sniper)
@@ -460,7 +445,7 @@ class Game(threading.Thread):
                 self.messages.get("Sniper").edit_text(
                     text="You didnt choose anyone to kill!")
             else:
-                context.bot.send_message(
+                self.context.bot.send_message(
                     chat_id=sniper_player.user_id, text="You have used all of your shots so you can't do anything tonight!")
 
         if self.night_votes.get("Detective") is None and detective_player is not None:
@@ -483,10 +468,10 @@ class Game(threading.Thread):
 
         if detective_player is not None:
             if self.get_player_by_id(int(self.night_votes.get("Detective"))).role == Roles.Mafia:
-                context.bot.send_message(
+                self.context.bot.send_message(
                     chat_id=detective_player.user_id, text="You guessed right!")
             else:
-                context.bot.send_message(
+                self.context.bot.send_message(
                     chat_id=detective_player.user_id, text="You guessed wrong!")
 
         if self.night_votes.get("Sniper") is not None:
@@ -504,7 +489,7 @@ class Game(threading.Thread):
         if sniper_kill == 1:
             kill_list.append(self.get_player_by_id(
                 int(self.night_votes.get("Sniper"))))
-            self.update_mafia_ranks(context, self.get_player_by_id(
+            self.update_mafia_ranks(self.get_player_by_id(
                 int(self.night_votes.get("Sniper"))))
 
         elif sniper_kill == 2:
@@ -531,7 +516,7 @@ class Game(threading.Thread):
         if sniper_kill == 1:
             message += "Congratulations! Our sniper killed a mafia successfully :)"
 
-        context.bot.send_message(
+        self.context.bot.send_message(
             chat_id=self.group_chat_id, text=message, parse_mode="Markdown")
 
         self.night_votes = {"Mafia_shot": None,
@@ -539,12 +524,12 @@ class Game(threading.Thread):
         self.messages = {"Mafia_shot": None,
                          "Detective": None, "Doctor": None, "Sniper": None}
 
-    def night(self, context: telegram.ext.CallbackContext):
+    def night(self):
         self.state = GameState.Night
-        context.bot.send_message(
+        self.context.bot.send_message(
             chat_id=self.group_chat_id, text="The night is started. 45 seconds left from night!")
         if self.day_night_counter == 1 and len(self.mafias) > 1:
-            self.notify_mafias(context)
+            self.notify_mafias()
             time.sleep(45)
         else:
             for player in self.get_alive_players():
@@ -552,24 +537,26 @@ class Game(threading.Thread):
                     poll = Poll("Who do you want to kill?" + player.emoji,
                                 self.get_citizens(), player.user_id, "night")
                     self.messages.update(
-                        {"Mafia_shot": poll.send_poll(context)})
+                        {"Mafia_shot": poll.send_poll(self.context)})
                 elif player.role == Roles.Sniper and self.sniper_shots > 0:
                     poll = Poll("Who do you want to kill?  \n If you dont want to kill anyone just dont choose anyone!" + player.emoji,
                                 self.get_players_without_sniper(), player.user_id, "night")
-                    self.messages.update({"Sniper": poll.send_poll(context)})
+                    self.messages.update(
+                        {"Sniper": poll.send_poll(self.context)})
                 elif player.role == Roles.Detective:
                     poll = Poll("Who do you want to doubt?" + player.emoji,
                                 self.get_players_without_detect(), player.user_id, "night")
                     self.messages.update(
-                        {"Detective": poll.send_poll(context)})
+                        {"Detective": poll.send_poll(self.context)})
                 elif player.role == Roles.Doctor:
                     poll = Poll("Who do you want to save‍?" + player.emoji,
                                 self.get_alive_players(), player.user_id, "night")
-                    self.messages.update({"Doctor": poll.send_poll(context)})
+                    self.messages.update(
+                        {"Doctor": poll.send_poll(self.context)})
             time.sleep(45)
-            self.night_result(context)
+            self.night_result()
 
-    def print_roles(self, context: telegram.ext.CallbackContext):
+    def print_roles(self):
         text = ""
         for player in self.players:
             if player.mafia_rank == 0:
@@ -578,10 +565,10 @@ class Game(threading.Thread):
             else:
                 text = text + "😈 " + player.get_markdown_call() + " " + player.role.name + \
                     player.emoji + "\n"
-        context.bot.send_message(
+        self.context.bot.send_message(
             chat_id=self.group_chat_id, text=text, parse_mode="Markdown")
 
-    def result_game(self, context: telegram.ext.CallbackContext):
+    def result_game(self):
         mafias = 0
         citizens = 0
         for player in self.get_alive_players():
@@ -593,28 +580,28 @@ class Game(threading.Thread):
         if mafias >= citizens:
             if not self.print_result:
                 self.print_result = True
-                context.bot.send_sticker(chat_id=self.group_chat_id,
-                                         sticker="CAACAgQAAxkBAAEBEGpfEajpXdMaTTseiJvWttCJFXbtwwACGQAD1ul3K3z"
-                                                 "-LuYH7F5fGgQ")
-                context.bot.send_message(
+                self.context.bot.send_sticker(chat_id=self.group_chat_id,
+                                              sticker="CAACAgQAAxkBAAEBEGpfEajpXdMaTTseiJvWttCJFXbtwwACGQAD1ul3K3z"
+                                              "-LuYH7F5fGgQ")
+                self.context.bot.send_message(
                     chat_id=self.group_chat_id, text="Mafia win!")
-                self.print_roles(context)
+                self.print_roles()
             return False
         elif mafias == 0:
             if not self.print_result:
                 self.print_result = True
-                context.bot.send_sticker(chat_id=self.group_chat_id,
-                                         sticker="CAACAgQAAxkBAAEBEGhfEajlbVPbMEesXXrgq4wOe"
-                                                 "-5eBAACGAAD1ul3K4WFHtFPPfm2GgQ")
-                context.bot.send_message(
+                self.context.bot.send_sticker(chat_id=self.group_chat_id,
+                                              sticker="CAACAgQAAxkBAAEBEGhfEajlbVPbMEesXXrgq4wOe"
+                                              "-5eBAACGAAD1ul3K4WFHtFPPfm2GgQ")
+                self.context.bot.send_message(
                     chat_id=self.group_chat_id, text="City win!")
-                self.print_roles(context)
+                self.print_roles()
             return False
         return True
 
-    def turn(self, context: telegram.ext.CallbackContext):
+    def turn(self):
         if self.day_night_counter % 2 != 0:
-            self.night(context)
+            self.night()
         else:
-            self.day(context)
+            self.day()
         self.day_night_counter += 1
