@@ -141,8 +141,9 @@ class Game(threading.Thread):
                             user.id, user_data, self)
             self.players.append(player)
             self.just_players.append(player)
-            self.update.message.reply_markdown(
-                "Current players:\n" + self.get_list())
+            with codecs.open(os.path.join("Lang", language, "CurrentPlayers"), 'r', encoding='utf8') as file:
+                self.update.message.reply_markdown(
+                    file.read() + "  \n" + self.get_list())
 
             with codecs.open(os.path.join("Lang", language, "SuccessfullyJoin"), 'r', encoding='utf8') as file:
                 self.context.bot.send_message(
@@ -154,18 +155,21 @@ class Game(threading.Thread):
                     chat_id=user['id'], text=file.read())
 
     def leave_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
+        language = get_lang(self.update, self.context)
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
                 del user_data["active_game"]
                 player = self.get_player_by_id(user.id)
                 self.players.remove(player)
                 self.just_players.remove(player)
-                self.update.message.reply_text(
-                    "You left the game successfully!")
+                with codecs.open(os.path.join("Lang", language, "LeaveGame"), 'r', encoding='utf8') as file:
+                    self.update.message.reply_text(file.read())
             else:
-                self.update.message.reply_text("You are not in this game!")
+                with codecs.open(os.path.join("Lang", language, "NotInGame"), 'r', encoding='utf8') as file:
+                    self.update.message.reply_text(file.read())
         else:
-            self.update.message.reply_text("You have not joined a game yet!")
+            with codecs.open(os.path.join("Lang", language, "NotJoinedYet"), 'r', encoding='utf8') as file:
+                self.update.message.reply_text(file.read())
 
     def get_alive_players(self):
         alive = []
@@ -213,21 +217,21 @@ class Game(threading.Thread):
         return without_sniper
 
     def start_game(self):
+        language = get_lang(self.update, self.context)
         if len(self.players) > 2:
             self.set_players_roles()
-            self.context.bot.send_message(
-                chat_id=self.group_chat_id, text='Game has been started!')
+            with codecs.open(os.path.join("Lang", language, "GameStarted"), 'r', encoding='utf8') as file:
+                self.context.bot.send_message(
+                    chat_id=self.group_chat_id, text=file.read())
             self.is_started = True
             self.reset_info()
             while self.result_game():
                 self.turn()
-            self.is_finished = True
-
         else:
-            self.context.bot.send_message(chat_id=self.group_chat_id, text='Game is canceled because there is not '
-                                          'enough players. Invite your friends to'
-                                          ' join.')
-            self.is_finished = True
+            with codecs.open(os.path.join("Lang", language, "GameCanceled"), 'r', encoding='utf8') as file:
+                self.context.bot.send_message(
+                    chat_id=self.group_chat_id, text=file.read())
+        self.is_finished = True
 
     def delete_game(self):
         for player in self.players:
