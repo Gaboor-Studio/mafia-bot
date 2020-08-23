@@ -16,7 +16,6 @@ class Mode(enum.Enum):
 class Database:
 
     lock = threading.Lock()
-
     @classmethod
     def do(cls, to_do, param1, param2=None):
         Database.lock.acquire()
@@ -31,7 +30,7 @@ class Database:
             r = Database.change_player_language(param1, param2)
         elif to_do == Mode.get_group:
             r = Database.get_group(param1)
-        else:
+        elif to_do == Mode.get_player:
             r = Database.get_player(param1)
         Database.lock.release()
         return r
@@ -42,10 +41,10 @@ class Database:
         if group_id not in list(d['group']):
             if result == 'mafia':
                 add = {'group': group_id, 'total_games': 1,
-                       'mafia': 1, 'city': 0, 'language': 'en'}
+                       'mafia': 1, 'city': 0, 'lang': 'en', 'state': None}
             else:
                 add = {'group': group_id, 'total_games': 1,
-                       'mafia': 0, 'city': 1, 'language': 'en'}
+                       'mafia': 0, 'city': 1, 'lang': 'en', 'state': None}
             d = d.append(add, ignore_index=True)
         else:
             index = d[d['group'] == group_id].index[0]
@@ -63,12 +62,13 @@ class Database:
         d = pd.read_csv("groups.csv")
         if group_id not in list(d['group']):
             add = {'group': group_id, 'total_games': 0,
-                   'mafia': 0, 'city': 0, 'language': language}
+                   'mafia': 0, 'city': 0, 'lang': language, 'state': None}
             d = d.append(add, ignore_index=True)
         else:
             index = d[d['group'] == group_id].index[0]
-            d.loc[index, 'language'] = language
+            d.loc[index, 'lang'] = language
         d.to_csv("groups.csv", index=False)
+
     '''
     Example
 
@@ -102,32 +102,37 @@ class Database:
 
                 if (roles[i] == Roles.Mafia or roles[i] == Roles.GodFather) and (result == "mafia"):
                     to_add = {'player': ids[i], 'total_games': 1, 'mafia_win': 1,
-                              'mafia_lose': 0, 'city_win': 0, 'city_lose': 0, 'language': 'en'}
+                              'mafia_lose': 0, 'city_win': 0, 'city_lose': 0, 'lang': 'en'}
 
                 elif (roles[i] == Roles.Mafia or roles[i] == Roles.GodFather) and (result == "city"):
                     to_add = {'player': ids[i], 'total_games': 1, 'mafia_win': 0,
-                              'mafia_lose': 1, 'city_win': 0, 'city_lose': 0, 'language': 'en'}
+                              'mafia_lose': 1, 'city_win': 0, 'city_lose': 0, 'lang': 'en'}
 
                 elif (roles[i] != Roles.Mafia and roles[i] != Roles.GodFather) and (result == "mafia"):
                     to_add = {'player': ids[i], 'total_games': 1, 'mafia_win': 0,
-                              'mafia_lose': 0, 'city_win': 1, 'city_lose': 0, 'language': 'en'}
+                              'mafia_lose': 0, 'city_win': 1, 'city_lose': 0, 'lang': 'en'}
 
                 else:
                     to_add = {'player': ids[i], 'total_games': 1, 'mafia_win': 0,
-                              'mafia_lose': 0, 'city_win': 0, 'city_lose': 1, 'language': 'en'}
+                              'mafia_lose': 0, 'city_win': 0, 'city_lose': 1, 'lang': 'en'}
                 d = d.append(to_add, ignore_index=True)
         d.to_csv("players.csv", index=False)
 
     @classmethod
     def change_player_language(cls, player_id, language):
+        print("cl")
         d = pd.read_csv("players.csv")
+        print("cl")
         if player_id in list(d['player']):
-            index = d[d['player'] == player_id].index[0]
-            d.loc[index, 'language'] = language
+            index = d[d.player == player_id].index[0]
+            d.loc[index, 'lang'] = language
         else:
+            print("cl")
             to_add = {'player': player_id, 'total_games': 0, 'mafia_win': 0,
-                      'mafia_lose': 0, 'city_win': 0, 'city_lose': 0, 'language': language}
+                      'mafia_lose': 0, 'city_win': 0, 'city_lose': 0, 'lang': language}
+            print("cl")
             d = d.append(to_add, ignore_index=True)
+        print("cl")
         d.to_csv("players.csv", index=False)
 
     '''
@@ -140,30 +145,52 @@ class Database:
     @classmethod
     def get_group(cls, group_id):
         d = pd.read_csv("groups.csv")
+        if d[d.group == group_id].reset_index().size == 0:
+            return None
         gp = dict(d[d.group == group_id].reset_index().iloc[0])
-        return {
+        dic = {
             'group': gp['group'],
             'mafia': gp['mafia'],
             'city': gp['city'],
             'total_games': gp['total_games'],
-            'mafia_percent': gp['mafia'] / gp['total_games'],
-            'city_percent': gp['city'] / gp['total_games']
+            'lang': gp['lang']
         }
+        if dic['total_games'] == 0:
+            dic['mafia_percent'] = 0
+            dic['city_percent'] = 0
+        else:
+            dic['mafia_percent'] = gp['mafia'] / gp['total_games']
+            dic['city_percent'] = gp['city'] / gp['total_games']
+        return dic
 
     @classmethod
     def get_player(cls, player_id):
+        print("/")
         d = pd.read_csv("players.csv")
+        print(d)
+        print("/")
+        if d[d.player == player_id].reset_index().size == 0:
+            return None
         pl = dict(d[d.player == player_id].reset_index().iloc[0])
-        return {
+        print("/")
+        dic = {
             'player': pl['player'],
             'mafia_win': pl['mafia_win'],
             'city_win': pl['city_win'],
             'mafia_lose': pl['mafia_lose'],
             'city_lose': pl['city_lose'],
             'total_games': pl['total_games'],
-            'mafia_win_percent': pl['mafia_win'] / pl['total_games'],
-            'city_win_percent': pl['people_win'] / pl['total_games']
+            'lang': pl['lang']
         }
+        print("/")
+        if pl['total_games'] == 0:
+            dic["mafia_win_percent"] = 0
+            dic["city_win_percent"] = 0
+        else:
+            dic['mafia_win_percent'] = pl['mafia_win'] / pl['total_games']
+            dic['city_win_percent'] = pl['city_win'] / pl['total_games']
+        print("/")
+        return dic
 
 
 g = pd.DataFrame({
@@ -171,7 +198,7 @@ g = pd.DataFrame({
     'total_games': [],
     'mafia': [],
     'city': [],
-    'language': []
+    'lang': [],
 })
 
 p = pd.DataFrame({
@@ -181,7 +208,7 @@ p = pd.DataFrame({
     'mafia_lose': [],
     'city_win': [],
     'city_lose': [],
-    'language': []
+    'lang': [],
 })
 
 
@@ -201,3 +228,6 @@ p = pd.DataFrame({
 # t1.start()
 # t2.start()
 # t3.start()
+
+# print(p)
+# print(g)

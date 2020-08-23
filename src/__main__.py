@@ -4,13 +4,14 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageH
 from Game import Game, GameState
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 import requests
-
+import threading
 from Player import Player, Roles
 from Poll import Poll
-from LangUtils import get_data, get_lang
+from LangUtils import get_data, get_lang, set_lang, get_database
 import traceback
 import codecs
 import os
+from DataManager import Database, Mode
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
 TOKEN = '1349950692:AAHsbNHvUmS72Kkg823FF5rd-T1Oe4N5z3s'
@@ -79,7 +80,25 @@ def just_for_pv(func):
     return wrapper_func
 
 
+def fill_data(func):
+    def wrapper_func(update, context):
+        if context.user_data == {}:
+            for key, value in get_database(update, context).items():
+                context.user_data[key] = value
+            context.user_data["lang_message"] = []
+            context.user_data["state"] = None
+        if update.message.from_user.id != update.effective_chat.id:
+            if context.chat_data == {}:
+                for key, value in get_database(update, context).items():
+                    context.chat_data[key] = value
+                context.chat_data["lang_message"] = []
+                context.chat_data["state"] = None
+        func(update, context)
+    return wrapper_func
+
+
 @just_for_group
+@fill_data
 def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     group_id = update.effective_chat.id
     group_data = context.chat_data
@@ -107,16 +126,25 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 
 @just_for_pv
 def start(update: telegram.Update, context: telegram.ext.CallbackContext):
+    print("start")
     context.user_data["state"] = None
-    context.user_data["game"] = None
-    context.user_data["lang"] = "en"
+    context.user_data["lang"] = 'en'
     context.user_data["lang_message"] = []
-    '''need to add database'''
-    language = get_lang(update, context)
-    with codecs.open(os.path.join("Lang", language, "Start"), 'r', encoding='utf8') as file:
+    context.user_data["total_games"] = 0
+    context.user_data["mafia_win"] = 0
+    context.user_data["mafia_lose"] = 0
+    context.user_data["city_win"] = 0
+    context.user_data["city_lose"] = 0
+    print("start")
+    t = threading.Thread(target=set_lang, args=(update, context))
+    print("start")
+    t.start()
+    print("start")
+    with codecs.open(os.path.join("Lang", "en", "Start"), 'r', encoding='utf8') as file:
         update.message.reply_text(file.read())
 
 
+@fill_data
 @just_for_group
 def join(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
@@ -125,7 +153,6 @@ def join(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
     language = get_lang(update, context)
     if "active_game" in group_data.keys():
-
         if has_subscribed(update, context):
             group_game = group_data["active_game"]
             if "active_game" not in user_data.keys():
@@ -150,6 +177,7 @@ def join(update: telegram.Update, context: telegram.ext.CallbackContext):
             update.message.reply_text(file.read())
 
 
+@fill_data
 @just_for_group
 def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
@@ -169,6 +197,7 @@ def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
             update.message.reply_text(file.read())
 
 
+@fill_data
 @admin_permission
 @just_for_group
 def end_game(update: telegram.Update, context: telegram.ext.CallbackContext):
@@ -213,10 +242,8 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
                 keyboard), parse_mode="Markdown")
 
     elif game.state == GameState.Night:
-        print("night state")
         query.answer()
         vote = query.data
-        print(vote)
         player = game.get_player_by_id(query.from_user['id'])
         if player.mafia_rank == 1:
             game.night_votes.update({"Mafia_shot": vote})
@@ -230,6 +257,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
                                 parse_mode="MarkDown")
 
 
+@fill_data
 def help_me(update, context):
     language = get_lang(update, context)
     with codecs.open(os.path.join("Lang", language, "Help"), 'r', encoding='utf8') as file:
@@ -237,40 +265,42 @@ def help_me(update, context):
             chat_id=update.message.chat_id, text=file.read(), parse_mode="Markdown")
 
 
+@fill_data
 @admin_permission
 def lang(update, context):
-    get_data(update, context)["state"] = "lang"
+    dic = get_data(update, context)
+    print(dic)
+    print("lang")
+    dic["state"] = "lang"
+    print("lang")
     keyboard = ReplyKeyboardMarkup(
         [["English", "فارسی"]], resize_keyboard=True, one_time_keyboard=True)
-    language = get_lang(update, context)
+    print("lang")
+    language = dic["lang"]
+    print("lang")
     with codecs.open(os.path.join("Lang", language, "ChooseLang"), 'r', encoding='utf8') as file:
         message = context.bot.send_message(chat_id=update.message.chat_id, text=file.read(
         ), parse_mode="Markdown", reply_markup=keyboard)
-        get_data(update, context)["lang_message"].append(message)
+        dic["lang_message"].append(message)
 
 
-def get_data(update, context):
-    if update.message.from_user.id == update.effective_chat.id:
-        dic = context.user_data
-    else:
-        dic = context.chat_data
-    return dic
-
-
-def get_lang(update, context):
-    return get_data(update, context)["lang"]
-
-
+@fill_data
 def text_handler(update, context):
     dic = get_data(update, context)
     if dic["state"] == "lang":
+        print("Test handler")
         if update.effective_message.text == "English":
             dic["lang"] = "en"
         else:
             dic["lang"] = "fa"
+        print("Test handler")
+        set_lang(update, context)
+        print("Test handler")
         for message in dic["lang_message"]:
             message.delete()
+        print("Test handler")
         dic["lang_message"] = []
+        print("Test handler")
         with codecs.open(os.path.join("Lang", dic["lang"], "ChangeLang"), 'r', encoding='utf8') as file:
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text=file.read(), parse_mode="Markdown", reply_markup=None)
@@ -284,12 +314,25 @@ def text_handler(update, context):
 def new_member(update, context):
     for member in update.message.new_chat_members:
         if member.id == context.bot.id:
-            context.chat_data["game"] = None
-            context.chat_data["state"] = None
-            context.chat_data["lang"] = "en"
-            context.chat_data["lang_message"] = []
+            print("added")
+            if get_database(update, context) is None:
+                print("1")
+                context.chat_data["state"] = None
+                context.chat_data["lang"] = 'en'
+                context.chat_data["lang_message"] = []
+                context.chat_data["total_games"] = 0
+                context.chat_data["mafia"] = 0
+                context.chat_data["city"] = 0
+                set_lang(update, context)
+            else:
+                print("2")
+                for key, value in get_database(update, context).items():
+                    context.chat_data[key] = value
+                context.chat_data["lang_message"] = []
+                context.chat_data["state"] = None
+
             print(context.chat_data)
-            '''need to add database'''
+            print("done")
 
 
 dispatcher = updater.dispatcher

@@ -287,17 +287,19 @@ class Game(threading.Thread):
             self.just_players.pop(r)
         # Sniper
         if len(self.players) > 8:
+
             self.sniper_shots = mafia_number - 2
             r = random.randrange(0, len(self.just_players))
             self.just_players[r].role = Roles.Sniper
             self.just_players[r].emoji = "🕸‍"
             self.citizens.append(self.just_players[r])
             self.just_players[r].send_role(self.context)
-            message = f"You have *{self.sniper_shots}* shot"
-            if self.sniper_shots > 1:
-                message += "s. Remember to use them carefully!"
-            else:
-                message += ". Remember to use it carefully!"
+            language = get_lang(self.update, self.context)
+            message = ""
+            with codecs.open(os.path.join("Lang", language, "SniperNumOfShots"), 'r', encoding='utf8') as file:
+                message += file.read() + f"*{self.sniper_shots}*" + "  \n"
+            with codecs.open(os.path.join("Lang", language, "SniperBeCareful"), 'r', encoding='utf8') as file:
+                message += file.read()
             self.context.bot.send_message(
                 chat_id=self.just_players[r].user_id, text=message, parse_mode="Markdown")
             self.just_players.pop(r)
