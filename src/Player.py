@@ -52,7 +52,8 @@ class Player:
             ) + "'s turn to talk 🗣", parse_mode='Markdown')
         else:
             context.bot.send_message(chat_id=group_chat_id, text="نوبت " +
-                                     self.get_markdown_call() + " هست که صحبت کنه", parse_mode='Markdown')
+                                                                 self.get_markdown_call() + " هست که صحبت کنه",
+                                     parse_mode='Markdown')
 
     def get_markdown_call(self):
         return f"[{self.name}](tg://user?id={self.user_id})"
@@ -82,8 +83,8 @@ class Player:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBN-BfPBhwBqNMe7_Ux36oWZh5AqVjAANKAAPW6XcrCCyNXGC3bJUaBA")
         with codecs.open(os.path.join("Lang", language, self.role.name), 'r', encoding='utf8') as file:
-            context.bot.send_message(chat_id=self.user_id, text=file.read())
+            context.bot.send_message(chat_id=self.user_id, text=file.read(), parse_mode="MarkDown")
         if self.role == Roles.Mafia or self.role == Roles.GodFather:
             with codecs.open(os.path.join("Lang", language, "MafiaRank"), 'r', encoding='utf8') as file:
                 context.bot.send_message(
-                    chat_id=self.user_id, text=file.read() + str(self.mafia_rank))
+                    chat_id=self.user_id, text=file.read() + str(self.mafia_rank), parse_mode="MarkDown")

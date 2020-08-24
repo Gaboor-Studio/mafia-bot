@@ -248,7 +248,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
                 keyboard), parse_mode="Markdown")
 
     elif game.state == GameState.Night:
-        language = context.chat_data["lang"]
+        language = context.user_data['active_game'].group_data
         query.answer()
         vote = query.data
         player = game.get_player_by_id(query.from_user['id'])
