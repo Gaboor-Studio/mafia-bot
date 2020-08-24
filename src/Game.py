@@ -47,7 +47,7 @@ class Game(threading.Thread):
 
     def run(self):
         try:
-            language = get_lang(self.update, self.context)
+            language = self.group_data["lang"]
             t = 150
             for i in range(4):
                 time.sleep(30)
@@ -134,7 +134,7 @@ class Game(threading.Thread):
         return city
 
     def join_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
-        language = get_lang(self.update, self.context)
+        language = self.group_data["lang"]
         if not self.is_started:
             user_data["active_game"] = self
             player = Player(user.full_name, user.username,
@@ -155,7 +155,7 @@ class Game(threading.Thread):
                     chat_id=user['id'], text=file.read())
 
     def leave_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
-        language = get_lang(self.update, self.context)
+        language = self.group_data["lang"]
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
                 del user_data["active_game"]
@@ -217,7 +217,7 @@ class Game(threading.Thread):
         return without_sniper
 
     def start_game(self):
-        language = get_lang(self.update, self.context)
+        language = self.group_data["lang"]
         if len(self.players) > 2:
             self.set_players_roles()
             with codecs.open(os.path.join("Lang", language, "GameStarted"), 'r', encoding='utf8') as file:
@@ -294,7 +294,7 @@ class Game(threading.Thread):
             self.just_players[r].emoji = "🕸‍"
             self.citizens.append(self.just_players[r])
             self.just_players[r].send_role(self.context)
-            language = get_lang(self.update, self.context)
+            language = self.group_data["lang"]
             message = ""
             with codecs.open(os.path.join("Lang", language, "SniperNumOfShots"), 'r', encoding='utf8') as file:
                 message += file.read() + f"*{self.sniper_shots}*" + "  \n"
@@ -312,11 +312,11 @@ class Game(threading.Thread):
         self.just_players.clear()
 
     def notify_mafias(self):
+        language = self.group_data["lang"]
         for mafia in self.mafias:
-            if len(self.mafias) == 2:
-                text = "Your teammate is:\n"
-            else:
-                text = "Your teammates are:\n"
+            text = ""
+            with codecs.open(os.path.join("Lang", language, "OtherMafias"), 'r', encoding='utf8') as file:
+                text = file.read()+"\n"
             for teammate in self.mafias:
                 if mafia.user_id != teammate.user_id:
                     text += teammate.get_markdown_call() + "  \n"
@@ -325,35 +325,50 @@ class Game(threading.Thread):
 
     def send_day_votes(self, players_list):
         for player in players_list:
-            poll = Poll("Do you want to kill " + player.get_markdown_call() + "?  \nVoters:" + "🙋‍♂️", ["YES", "NO"],
-                        self.group_chat_id, "day")
+            language = self.group_data["lang"]
+            poll = None
+            text = ""
+            if language == 'en':
+                poll = Poll("Vote to kill: " + player.get_markdown_call() + "  \nVoters:" + "🙋‍♂️", ["YES", "NO"],
+                            self.group_chat_id, "day")
+                text = f"Voting results to kill: {player.get_markdown_call()}:  \n\nYes: "
+            else:
+                poll = Poll("رای برای کشتن: " + player.get_markdown_call() + "  \n" + "🙋‍♂️" + "رای دهندگان:", ["آره", "نه"],
+                            self.group_chat_id, "day")
+                text = f"نتیجه ی رای گیری برای کشتن {player.get_markdown_call()}:  \n\nآره: "
             poll_message = poll.send_poll(self.context)
-            time_message = self.context.bot.send_message(
-                chat_id=self.group_chat_id, text="15 seconds left until the end of voting")
+            with codecs.open(os.path.join("Lang", language, "VoteTime"), 'r', encoding='utf8') as file:
+                time_message = self.context.bot.send_message(
+                    chat_id=self.group_chat_id, text=file.read())
             time.sleep(15)
-            text = f"Votes for {player.get_markdown_call()}:  \n\nYes: "
             for user_id, status in self.voters.items():
                 if status == "YES":
                     self.day_votes[player.user_id].append(user_id)
                     p = self.get_player_by_id(user_id)
-                    text += " " + p.get_markdown_call()
-            text += "  \n\nNo:"
+                    text += "  \n" + p.get_markdown_call()
+            if language == 'en':
+                text += "  \n\nNo:"
+            else:
+                text += " \n\nنه:"
             for user_id, status in self.voters.items():
                 if status == "NO":
                     p = self.get_player_by_id(user_id)
-                    text += " " + p.get_markdown_call()
+                    text += "  \n" + p.get_markdown_call()
             poll_message.edit_text(text=text, parse_mode="Markdown")
             time_message.delete()
             self.voters = {}
 
     def update_mafia_ranks(self, dead_mafia):
+        language = self.group_data["lang"]
         for p in self.get_alive_players():
             if p.mafia_rank > dead_mafia.mafia_rank:
                 p.mafia_rank = p.mafia_rank - 1
-                self.context.bot.send_message(
-                    chat_id=p.user_id, text="A mafia player is dead. since now your mafia rank is : " + str(p.mafia_rank))
+                with codecs.open(os.path.join("Lang", language, "MafiaRank"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=p.user_id, text=file.read() + str(p.mafia_rank))
 
     def day(self):
+        language = self.group_data["lang"]
         self.state = GameState.Day
         for player in self.get_alive_players():
             player.talk(self.group_chat_id, self.context)
@@ -363,11 +378,13 @@ class Game(threading.Thread):
             kill_players = self.find_votes_more_than_half()
             message = ""
             if len(kill_players) != 0:
-                message = "Defending players:  \n"
+                with codecs.open(os.path.join("Lang", language, "DefendingPlayers"), 'r', encoding='utf8') as file:
+                    message = file.read() + "  \n"
                 for player in kill_players:
                     message += player.get_markdown_call() + "  \n"
             else:
-                message = "It seems we have no player to defend themselves."
+                with codecs.open(os.path.join("Lang", language, "NoDefend"), 'r', encoding='utf8') as file:
+                    message = file.read()
             self.context.bot.send_message(
                 chat_id=self.group_chat_id, text=message, parse_mode="Markdown")
             self.reset_info()
@@ -378,21 +395,21 @@ class Game(threading.Thread):
                 self.send_day_votes(kill_players)
                 final_kill = self.find_votes_more_than_half()
                 if len(final_kill) == 0:
-                    self.context.bot.send_message(
-                        chat_id=self.group_chat_id, text="Nobody died today.there is no player with more than half votes!!")
+                    with codecs.open(os.path.join("Lang", language, "NobodyDeadHalf"), 'r', encoding='utf8') as file:
+                        self.context.bot.send_message(
+                            chat_id=self.group_chat_id, text=file.read())
                 elif len(final_kill) == 1:
                     player = final_kill[0]
                     if player.shield:
                         player.shield = False
                         """Fix the message text"""
-                        self.context.bot.send_message(
-                            chat_id=self.group_chat_id,
-                            text=f"{player.get_markdown_call()} is the *Bulletproof* and will lose their shield. since now mafia can kill them at night.  \nReady for the next night!", parse_mode="Markdown")
+                        with codecs.open(os.path.join("Lang", language, "BulletproofAnounce"), 'r', encoding='utf8') as file:
+                            self.context.bot.send_message(
+                                chat_id=self.group_chat_id, text=f"{player.get_markdown_call()} {file.read()}", parse_mode="Markdown")
                     else:
-                        self.context.bot.send_message(
-                            chat_id=self.group_chat_id,
-                            text=player.get_markdown_call() + "☠ died. Everybody listen to his final will",
-                            parse_mode="Markdown")
+                        with codecs.open(os.path.join("Lang", language, "FinalWill"), 'r', encoding='utf8') as file:
+                            self.context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
+                            ) + file.read(), parse_mode="Markdown")
                         if player.role == Roles.Mafia or player.role == Roles.GodFather:
                             self.update_mafia_ranks(player)
                         time.sleep(5)
@@ -404,55 +421,56 @@ class Game(threading.Thread):
                         if player.shield:
                             player.shield = False
                             """Fix the message text"""
-                            self.context.bot.send_message(
-                                chat_id=self.group_chat_id,
-                                text=f"{player.get_markdown_call()} is the *Bulletproof* and will lose their shield. since now mafia can kill them at night.  \nReady for the next night!", parse_mode="Markdown")
+                            with codecs.open(os.path.join("Lang", language, "BulletproofAnounce"), 'r', encoding='utf8') as file:
+                                self.context.bot.send_message(
+                                    chat_id=self.group_chat_id, text=f"{player.get_markdown_call()} {file.read()}", parse_mode="Markdown")
                         else:
-                            self.context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
-                            ) + "☠️ died. Everybody listen to his final will", parse_mode="Markdown")
+                            with codecs.open(os.path.join("Lang", language, "FinalWill"), 'r', encoding='utf8') as file:
+                                self.context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
+                                ) + file.read(), parse_mode="Markdown")
                             time.sleep(5)
                             player.is_alive = False
                             if player.role == Roles.Mafia or player.role == Roles.GodFather:
                                 self.update_mafia_ranks(player)
                     else:
-                        self.context.bot.send_message(
-                            chat_id=self.group_chat_id,
-                            text="Nobody died today because of players with same number of votes!!")
+                        with codecs.open(os.path.join("Lang", language, "NobodyDiedSame"), 'r', encoding='utf8') as file:
+                            self.context.bot.send_message(
+                                chat_id=self.group_chat_id, text=file.read())
                         time.sleep(5)
             else:
-                self.context.bot.send_message(
-                    chat_id=self.group_chat_id, text="Nobody died today.there is no player with more than half votes!!\nReady for the next night!")
+                with codecs.open(os.path.join("Lang", language, "NobodyDeadHalf"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=self.group_chat_id, text=file.read())
                 time.sleep(5)
             self.reset_info()
 
     def night_result(self):
+        language = self.group_data["lang"]
         detective_player = self.get_player_by_role(Roles.Detective)
         doctor_player = self.get_player_by_role(Roles.Doctor)
         sniper_player = self.get_player_by_role(Roles.Sniper)
         mafia_kill = True
         sniper_kill = 0
-
+        randomly_chosen = ""
+        with codecs.open(os.path.join("Lang", language, "ChosenRandomly"), 'r', encoding='utf8') as file:
+            randomly_chosen = file.read()
         if self.night_votes.get("Mafia_shot") is None:
             r = random.randrange(0, len(self.get_citizens()))
             self.night_votes.update(
                 {"Mafia_shot": self.get_citizens()[r].user_id})
             self.messages.get("Mafia_shot").edit_text(
-                text="Bot chose randomly " + self.get_citizens()[r].get_markdown_call(), parse_mode="MarkDown")
+                text=f"{randomly_chosen} {self.get_citizens()[r].get_markdown_call()}", parse_mode="MarkDown")
 
         if self.night_votes.get("Doctor") is None and doctor_player is not None:
             r = random.randrange(0, len(self.get_alive_players()))
             self.night_votes.update(
                 {"Doctor": self.get_alive_players()[r].user_id})
-            self.messages.get("Doctor").edit_text(
-                text="Bot chose randomly " + self.get_alive_players()[r].get_markdown_call(), parse_mode="MarkDown")
+            self.messages.get("Doctor").edit_texبt(
+                text=f"{randomly_chosen} {self.get_citizens()[r].get_markdown_call()}", parse_mode="MarkDown")
 
-        if self.night_votes.get("Sniper") is None and sniper_player is not None:
-            if self.messages.get("Sniper") is not None:
-                self.messages.get("Sniper").edit_text(
-                    text="You didnt choose anyone to kill!")
-            else:
-                self.context.bot.send_message(
-                    chat_id=sniper_player.user_id, text="You have used all of your shots so you can't do anything tonight!")
+        if self.night_votes.get("Sniper") is None and sniper_player is not None and self.messages.get("Sniper") is not None:
+            with codecs.open(os.path.join("Lang", language, "SniperDidntChoose"), 'r', encoding='utf8') as file:
+                self.messages.get("Sniper").edit_text(text=file.read())
 
         if self.night_votes.get("Detective") is None and detective_player is not None:
             r = random.randrange(
@@ -460,9 +478,7 @@ class Game(threading.Thread):
             self.night_votes.update(
                 {"Detective": self.get_players_without_detect()[r].user_id})
             self.messages.get("Detective").edit_text(
-                text="Bot chose randomly " +
-                self.get_players_without_detect()[r].get_markdown_call(),
-                parse_mode="MarkDown")
+                text=f"{randomly_chosen} {self.get_citizens()[r].get_markdown_call()}", parse_mode="MarkDown")
 
         if doctor_player is not None and str(self.night_votes.get("Mafia_shot")) == str(self.night_votes.get("Doctor")):
             mafia_kill = False
@@ -474,11 +490,13 @@ class Game(threading.Thread):
 
         if detective_player is not None:
             if self.get_player_by_id(int(self.night_votes.get("Detective"))).role == Roles.Mafia:
-                self.context.bot.send_message(
-                    chat_id=detective_player.user_id, text="You guessed right!")
+                with codecs.open(os.path.join("Lang", language, "DetectiveRight"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=detective_player.user_id, text=file.read())
             else:
-                self.context.bot.send_message(
-                    chat_id=detective_player.user_id, text="You guessed wrong!")
+                with codecs.open(os.path.join("Lang", language, "DetectiveWrong"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=detective_player.user_id, text=file.read())
 
         if self.night_votes.get("Sniper") is not None:
             if self.get_player_by_id(int(self.night_votes.get("Sniper"))).role == Roles.Mafia:
@@ -508,20 +526,18 @@ class Game(threading.Thread):
         random.shuffle(kill_list)
         message = ""
         if len(kill_list) == 0:
-            message += "No player dead !"
+            with codecs.open(os.path.join("Lang", language, "NoNightDead"), 'r', encoding='utf8') as file:
+                message += file.read()
         else:
-            message += f"{len(kill_list)} "
-            if len(kill_list) == 1:
-                message += "player dead:  \n"
-            else:
-                message += "players dead:  \n"
+            with codecs.open(os.path.join("Lang", language, "NightDead"), 'r', encoding='utf8') as file:
+                message += file.read() + "  \n"
         for player in kill_list:
             message += player.get_markdown_call() + "  \n"
             player.is_alive = False
 
         if sniper_kill == 1:
-            message += "Congratulations! Our sniper killed a mafia successfully :)"
-
+            with codecs.open(os.path.join("Lang", language, "SniperCongrats"), 'r', encoding='utf8') as file:
+                message += file.read()
         self.context.bot.send_message(
             chat_id=self.group_chat_id, text=message, parse_mode="Markdown")
 
@@ -531,35 +547,59 @@ class Game(threading.Thread):
                          "Detective": None, "Doctor": None, "Sniper": None}
 
     def night(self):
+        language = self.group_data["lang"]
         self.state = GameState.Night
-        self.context.bot.send_message(
-            chat_id=self.group_chat_id, text="The night is started. 45 seconds left from night!")
         if self.day_night_counter == 1 and len(self.mafias) > 1:
+            with codecs.open(os.path.join("Lang", language, "FirstNightDesc"), 'r', encoding='utf8') as file:
+                self.context.bot.send_message(
+                    chat_id=self.group_chat_id, text=file.read())
             self.notify_mafias()
-            time.sleep(45)
+            for i in range(2):
+                with codecs.open(os.path.join("Lang", language, f"Night{30-i*15}sec"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=self.group_chat_id, text=file.read())
+                time.sleep(15)
+
         else:
+            with codecs.open(os.path.join("Lang", language, "NightStart"), 'r', encoding='utf8') as file:
+                self.context.bot.send_message(
+                    chat_id=self.group_chat_id, text=file.read())
             for player in self.get_alive_players():
                 if player.mafia_rank == 1:
-                    poll = Poll("Who do you want to kill?" + player.emoji,
-                                self.get_citizens(), player.user_id, "night")
-                    self.messages.update(
-                        {"Mafia_shot": poll.send_poll(self.context)})
-                elif player.role == Roles.Sniper and self.sniper_shots > 0:
-                    poll = Poll("Who do you want to kill?  \n If you dont want to kill anyone just dont choose anyone!" + player.emoji,
-                                self.get_players_without_sniper(), player.user_id, "night")
-                    self.messages.update(
-                        {"Sniper": poll.send_poll(self.context)})
+                    with codecs.open(os.path.join("Lang", language, "MafiaVoteNight"), 'r', encoding='utf8') as file:
+                        poll = Poll(file.read() + player.emoji,
+                                    self.get_citizens(), player.user_id, "night")
+                        self.messages.update(
+                            {"Mafia_shot": poll.send_poll(self.context)})
+                elif player.role == Roles.Sniper:
+                    if self.sniper_shots > 0:
+                        with codecs.open(os.path.join("Lang", language, "SniperVoteNight"), 'r', encoding='utf8') as file:
+                            poll = Poll(file.read(
+                            ) + player.emoji, self.get_players_without_sniper(), player.user_id, "night")
+                            self.messages.update(
+                                {"Sniper": poll.send_poll(self.context)})
+                    else:
+                        with codecs.open(os.path.join("Lang", language, "SniperEnd"), 'r', encoding='utf8') as file:
+                            self.context.bot.send_message(
+                                chat_id=player.user_id, text=file.read())
                 elif player.role == Roles.Detective:
-                    poll = Poll("Who do you want to doubt?" + player.emoji,
-                                self.get_players_without_detect(), player.user_id, "night")
-                    self.messages.update(
-                        {"Detective": poll.send_poll(self.context)})
+                    with codecs.open(os.path.join("Lang", language, "DetectiveVoteNight"), 'r', encoding='utf8') as file:
+                        poll = Poll(file.read(
+                        ) + player.emoji, self.get_players_without_detect(), player.user_id, "night")
+                        self.messages.update(
+                            {"Detective": poll.send_poll(self.context)})
                 elif player.role == Roles.Doctor:
-                    poll = Poll("Who do you want to save‍?" + player.emoji,
-                                self.get_alive_players(), player.user_id, "night")
-                    self.messages.update(
-                        {"Doctor": poll.send_poll(self.context)})
-            time.sleep(45)
+                    with codecs.open(os.path.join("Lang", language, "DoctorVoteNight"), 'r', encoding='utf8') as file:
+                        poll = Poll(file.read() + player.emoji,
+                                    self.get_alive_players(), player.user_id, "night")
+                        self.messages.update(
+                            {"Doctor": poll.send_poll(self.context)})
+            for i in range(4):
+                with codecs.open(os.path.join("Lang", language, f"Night{60-i*15}sec"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=self.group_chat_id, text=file.read())
+                time.sleep(15)
+
             self.night_result()
 
     def print_roles(self):
@@ -584,23 +624,28 @@ class Game(threading.Thread):
                 citizens += 1
 
         if mafias >= citizens:
+            language = self.group_data["lang"]
             if not self.print_result:
                 self.print_result = True
                 self.context.bot.send_sticker(chat_id=self.group_chat_id,
                                               sticker="CAACAgQAAxkBAAEBEGpfEajpXdMaTTseiJvWttCJFXbtwwACGQAD1ul3K3z"
                                               "-LuYH7F5fGgQ")
-                self.context.bot.send_message(
-                    chat_id=self.group_chat_id, text="Mafia win!")
+                with codecs.open(os.path.join("Lang", language, "MafiaWon"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=self.group_chat_id, text=file.read())
                 self.print_roles()
             return False
         elif mafias == 0:
+            language = self.group_data["lang"]
             if not self.print_result:
                 self.print_result = True
                 self.context.bot.send_sticker(chat_id=self.group_chat_id,
                                               sticker="CAACAgQAAxkBAAEBEGhfEajlbVPbMEesXXrgq4wOe"
                                               "-5eBAACGAAD1ul3K4WFHtFPPfm2GgQ")
-                self.context.bot.send_message(
-                    chat_id=self.group_chat_id, text="City win!")
+
+                with codecs.open(os.path.join("Lang", language, "CityWon"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=self.group_chat_id, text=file.read())
                 self.print_roles()
             return False
         return True

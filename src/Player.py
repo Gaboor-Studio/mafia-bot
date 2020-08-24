@@ -3,6 +3,8 @@ from Poll import Poll
 from telegram.ext import CommandHandler
 import time
 import enum
+import codecs
+import os
 
 
 class Roles(enum.Enum):
@@ -43,27 +45,30 @@ class Player:
         return self.user_name == player.user_name
 
     def talk(self, group_chat_id, context: telegram.ext.CallbackContext):
-        context.bot.send_message(chat_id=group_chat_id,
-                                 text=self.get_markdown_call() + "'s turn to talk 🗣",
-                                 parse_mode='Markdown')
+        game = self.user_data['active_game']
+        lang = game.group_data['lang']
+        if lang == 'en':
+            context.bot.send_message(chat_id=group_chat_id, text=self.get_markdown_call(
+            ) + "'s turn to talk 🗣", parse_mode='Markdown')
+        else:
+            context.bot.send_message(chat_id=group_chat_id, text="نوبت " +
+                                     self.get_markdown_call() + " هست که صحبت کنه", parse_mode='Markdown')
 
     def get_markdown_call(self):
         return f"[{self.name}](tg://user?id={self.user_id})"
 
     def send_role(self, context: telegram.ext.CallbackContext):
+        game = self.user_data['active_game']
+        language = game.group_data['lang']
         if self.role == Roles.Citizen:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEVVfE0jFjzsHhOI_TcxxIG2wktMrxwACHAAD1ul3KxBZtykr9BZTGgQ")
         elif self.role == Roles.GodFather:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEU1fE0eH9cuSbcnfD4DR2x7R2dk4pwACGgAD1ul3K6tFV61NP-r5GgQ")
-            context.bot.send_message(
-                chat_id=self.user_id, text="Your mafia rank :" + str(self.mafia_rank))
         elif self.role == Roles.Mafia:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEUtfE0dFaAz9MUL8D5wg6Na2-YnQwwACHQAD1ul3K-J4YMXfsX4oGgQ")
-            context.bot.send_message(
-                chat_id=self.user_id, text="Your mafia rank :" + str(self.mafia_rank))
         elif self.role == Roles.Detective:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBEVFfE0h-Tv7X7WsBAmqTaDiggvB7zAACGwAD1ul3K1Bufqtn71YzGgQ")
@@ -76,5 +81,9 @@ class Player:
         elif self.role == Roles.Bulletproof:
             context.bot.send_sticker(chat_id=self.user_id,
                                      sticker="CAACAgQAAxkBAAEBN-BfPBhwBqNMe7_Ux36oWZh5AqVjAANKAAPW6XcrCCyNXGC3bJUaBA")
-        context.bot.send_message(chat_id=self.user_id,
-                                 text=self.role.name + self.emoji)
+        with codecs.open(os.path.join("Lang", language, self.role.name), 'r', encoding='utf8') as file:
+            context.bot.send_message(chat_id=self.user_id, text=file.read())
+        if self.role == Roles.Mafia or self.role == Roles.GodFather:
+            with codecs.open(os.path.join("Lang", language, "MafiaRank"), 'r', encoding='utf8') as file:
+                context.bot.send_message(
+                    chat_id=self.user_id, text=file.read() + str(self.mafia_rank))

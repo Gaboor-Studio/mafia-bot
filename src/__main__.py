@@ -2,7 +2,7 @@ import telegram
 
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from Game import Game, GameState
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 import requests
 import threading
 from Player import Player, Roles
@@ -216,20 +216,26 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
     query = update.callback_query
     game = context.user_data["active_game"]
     if game.state == GameState.Day:
+        language = context.chat_data["lang"]
         vote = query.data
-        if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat'][
-                'id'] == game.group_chat_id:
-            if vote == "YES":
+        if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat']['id'] == game.group_chat_id:
+            if vote == "YES" or vote == "آره":
                 game.voters[query.from_user['id']] = "YES"
             else:
                 game.voters[query.from_user['id']] = "NO"
             context.bot.answer_callback_query(
-                query.id, text=f"You voted for {vote}")
+                query.id, text=f"{vote}")
             keyboard = []
-            keyboard.append(
-                [InlineKeyboardButton("YES", callback_data="YES")])
-            keyboard.append(
-                [InlineKeyboardButton("NO", callback_data="NO")])
+            if language == 'en':
+                keyboard.append(
+                    [InlineKeyboardButton("YES", callback_data="YES")])
+                keyboard.append(
+                    [InlineKeyboardButton("NO", callback_data="NO")])
+            else:
+                keyboard.append(
+                    [InlineKeyboardButton("آره", callback_data="آره")])
+                keyboard.append(
+                    [InlineKeyboardButton("نه", callback_data="نه")])
             text = query.message.text_markdown
             lines = text.splitlines(True)
             text = lines[0] + lines[1]
@@ -242,6 +248,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
                 keyboard), parse_mode="Markdown")
 
     elif game.state == GameState.Night:
+        language = context.chat_data["lang"]
         query.answer()
         vote = query.data
         player = game.get_player_by_id(query.from_user['id'])
@@ -253,8 +260,12 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
             game.night_votes.update({"Detective": vote})
         elif player.role == Roles.Doctor:
             game.night_votes.update({"Doctor": vote})
-        query.edit_message_text(text="Your choice:" + game.get_player_by_id(int(vote)).get_markdown_call(),
-                                parse_mode="MarkDown")
+        if language == 'en':
+            query.edit_message_text(text="Your choice: " + game.get_player_by_id(int(vote)).get_markdown_call(),
+                                    parse_mode="MarkDown")
+        else:
+            query.edit_message_text(text="انتخاب انجام شد: " + game.get_player_by_id(int(vote)).get_markdown_call(),
+                                    parse_mode="MarkDown")
 
 
 @fill_data
@@ -303,11 +314,7 @@ def text_handler(update, context):
         print("Test handler")
         with codecs.open(os.path.join("Lang", dic["lang"], "ChangeLang"), 'r', encoding='utf8') as file:
             context.bot.send_message(
-                chat_id=update.effective_chat.id, text=file.read(), parse_mode="Markdown", reply_markup=None)
-    elif dic["state"] == None:
-        with codecs.open(os.path.join("Lang", dic["lang"], "NoCommand"), 'r', encoding='utf8') as file:
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text=file.read())
+                chat_id=update.effective_chat.id, text=file.read(), parse_mode="Markdown", reply_markup=ReplyKeyboardRemove())
     dic["state"] = None
 
 
