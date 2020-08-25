@@ -14,8 +14,8 @@ class Mode(enum.Enum):
 
 
 class Database:
-
     lock = threading.Lock()
+
     @classmethod
     def do(cls, to_do, param1, param2=None):
         Database.lock.acquire()
@@ -179,6 +179,8 @@ class Database:
             'city_win': pl['city_win'],
             'mafia_lose': pl['mafia_lose'],
             'city_lose': pl['city_lose'],
+            'city_total': pl['city_lose'] + pl['city_win'],
+            'mafia_total': pl['mafia_lose'] + pl['mafia_win'],
             'total_games': pl['total_games'],
             'lang': pl['lang']
         }
@@ -186,9 +188,14 @@ class Database:
         if pl['total_games'] == 0:
             dic["mafia_win_percent"] = 0
             dic["city_win_percent"] = 0
+            dic["win_percent"] = 0
+            dic['city_total'] = 0
+            dic['mafia_total'] = 0
+
         else:
-            dic['mafia_win_percent'] = pl['mafia_win'] / pl['total_games']
-            dic['city_win_percent'] = pl['city_win'] / pl['total_games']
+            dic['mafia_win_percent'] = pl['mafia_win'] / (pl['mafia_win'] + pl["mafia_lose"])
+            dic['city_win_percent'] = pl['city_win'] / (pl['city_win'] + pl["city_lose"])
+            dic["win_percent"] = (pl['mafia_win'] + pl['city_win']) / pl["total_games"]
         print("/")
         return dic
 
@@ -210,7 +217,6 @@ p = pd.DataFrame({
     'city_lose': [],
     'lang': [],
 })
-
 
 # p.to_csv("players.csv", index=False)
 # g.to_csv("groups.csv", index=False)

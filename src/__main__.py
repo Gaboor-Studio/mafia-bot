@@ -10,11 +10,12 @@ from Poll import Poll
 from LangUtils import get_data, get_lang, set_lang, get_database
 import traceback
 import codecs
+from DataManager import Database
 import os
 from DataManager import Database, Mode
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
-TOKEN = '1349950692:AAHsbNHvUmS72Kkg823FF5rd-T1Oe4N5z3s'
+TOKEN = '1349950692:AAEFKKispr2bS_mpTQXJRoAmFO656Wf12tE'
 
 # TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
@@ -38,6 +39,7 @@ def testing(func):
             func(update, context)
         except Exception as e:
             traceback.print_exc(e)
+
     return wrapper_func
 
 
@@ -94,6 +96,7 @@ def fill_data(func):
                 context.chat_data["lang_message"] = []
                 context.chat_data["state"] = None
         func(update, context)
+
     return wrapper_func
 
 
@@ -164,7 +167,8 @@ def join(update: telegram.Update, context: telegram.ext.CallbackContext):
                         context.bot.send_message(
                             chat_id=user['id'], text=file.read())
                 else:
-                    with codecs.open(os.path.join("Lang", language, "AlreadyJoinedAnotherGroup"), 'r', encoding='utf8') as file:
+                    with codecs.open(os.path.join("Lang", language, "AlreadyJoinedAnotherGroup"), 'r',
+                                     encoding='utf8') as file:
                         update.message.reply_markdown(file.read())
                         context.bot.send_message(
                             chat_id=user['id'], text=file.read())
@@ -218,7 +222,8 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
     if game.state == GameState.Day:
         language = context.chat_data["lang"]
         vote = query.data
-        if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat']['id'] == game.group_chat_id:
+        if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat'][
+            'id'] == game.group_chat_id:
             if vote == "YES" or vote == "آره":
                 game.voters[query.from_user['id']] = "YES"
             else:
@@ -314,7 +319,8 @@ def text_handler(update, context):
         print("Test handler")
         with codecs.open(os.path.join("Lang", dic["lang"], "ChangeLang"), 'r', encoding='utf8') as file:
             context.bot.send_message(
-                chat_id=update.effective_chat.id, text=file.read(), parse_mode="Markdown", reply_markup=ReplyKeyboardRemove())
+                chat_id=update.effective_chat.id, text=file.read(), parse_mode="Markdown",
+                reply_markup=ReplyKeyboardRemove())
     dic["state"] = None
 
 
@@ -342,6 +348,32 @@ def new_member(update, context):
             print("done")
 
 
+@fill_data
+def stats(update: telegram.Update, context: telegram.ext.CallbackContext):
+    user = update.message.from_user
+    player_data = context.user_data
+    user_id = user["id"]
+    user_name = user["first_name"] + " " + user["last_name"]
+    mark_down = f"[{user_name}](tg://user?id={str(user_id)})"
+    text = ""
+    text = text + mark_down + " Played " + str(player_data.get(
+        "total_games")) + " times\nWin rate: " + str(player_data.get("win_percent")) + "\nCity: " + str(
+        player_data.get('city_total')) + " Win rate: " + str(player_data.get('mafia_win_percent')) + "\nMafia:" + str(
+        player_data.get('mafia_total')) + " Win rate: " + str(player_data.get('mafia_win_percent'))
+    update.message.reply_markdown(text=text)
+
+
+@fill_data
+def group_stats(update: telegram.Update, context: telegram.ext.CallbackContext):
+    group = context.chat_data
+    text = ""
+    text = " Played " + str(group.get(
+        "total_games")) + " times\nCity: " + str(
+        group.get('city')) + " win\nMafia:" + str(
+        group.get('mafia')) + " win"
+    update.message.reply_markdown(text=text)
+
+
 dispatcher = updater.dispatcher
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(CommandHandler("new", new_game))
@@ -351,6 +383,9 @@ dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler('join', join))
 dispatcher.add_handler(CommandHandler('leave', leave))
 dispatcher.add_handler(CommandHandler('lang', lang))
+dispatcher.add_handler(CommandHandler('stats', stats))
+# dispatcher.add_handler(CommandHandler('global_stats', global_stats))
+dispatcher.add_handler(CommandHandler('group_stats', group_stats))
 dispatcher.add_handler(MessageHandler(
     Filters.status_update.new_chat_members, new_member))
 dispatcher.add_handler(MessageHandler(Filters.all, text_handler))

@@ -11,6 +11,7 @@ import traceback
 from LangUtils import get_data, get_lang
 import os
 import codecs
+from DataManager import Database
 
 
 class GameState(enum.Enum):
@@ -545,7 +546,7 @@ class Game(threading.Thread):
             r = random.randrange(0, len(self.get_alive_players()))
             self.night_votes.update(
                 {"Doctor": self.get_alive_players()[r].user_id})
-            self.messages.get("Doctor").edit_texبt(
+            self.messages.get("Doctor").edit_text(
                 text=f"{randomly_chosen} {self.get_citizens()[r].get_markdown_call()}", parse_mode="MarkDown")
 
         if self.night_votes.get("Sniper") is None and sniper_player is not None and self.messages.get(
@@ -719,6 +720,7 @@ class Game(threading.Thread):
                     self.context.bot.send_message(
                         chat_id=self.group_chat_id, text=file.read())
                 self.print_roles()
+            Database.update_players_stats(player_list=self.players, result="mafia")
             return False
         elif mafias == 0:
             language = self.group_data["lang"]
@@ -732,6 +734,7 @@ class Game(threading.Thread):
                     self.context.bot.send_message(
                         chat_id=self.group_chat_id, text=file.read())
                 self.print_roles()
+            Database.update_players_stats(player_list=self.players, result="city")
             return False
         return True
 
