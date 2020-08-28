@@ -110,29 +110,24 @@ class Database:
 
                 elif (roles[i] != Roles.Mafia and roles[i] != Roles.GodFather) and (result == "mafia"):
                     to_add = {'player': ids[i], 'total_games': 1, 'mafia_win': 0,
-                              'mafia_lose': 0, 'city_win': 1, 'city_lose': 0, 'lang': 'en'}
+                              'mafia_lose': 0, 'city_win': 0, 'city_lose': 1, 'lang': 'en'}
 
                 else:
                     to_add = {'player': ids[i], 'total_games': 1, 'mafia_win': 0,
-                              'mafia_lose': 0, 'city_win': 0, 'city_lose': 1, 'lang': 'en'}
+                              'mafia_lose': 0, 'city_win': 1, 'city_lose': 0, 'lang': 'en'}
                 d = d.append(to_add, ignore_index=True)
         d.to_csv("players.csv", index=False)
 
     @classmethod
     def change_player_language(cls, player_id, language):
-        print("cl")
         d = pd.read_csv("players.csv")
-        print("cl")
         if player_id in list(d['player']):
             index = d[d.player == player_id].index[0]
             d.loc[index, 'lang'] = language
         else:
-            print("cl")
             to_add = {'player': player_id, 'total_games': 0, 'mafia_win': 0,
                       'mafia_lose': 0, 'city_win': 0, 'city_lose': 0, 'lang': language}
-            print("cl")
             d = d.append(to_add, ignore_index=True)
-        print("cl")
         d.to_csv("players.csv", index=False)
 
     '''
@@ -159,44 +154,40 @@ class Database:
             dic['mafia_percent'] = 0
             dic['city_percent'] = 0
         else:
-            dic['mafia_percent'] = gp['mafia'] / gp['total_games']
-            dic['city_percent'] = gp['city'] / gp['total_games']
+            dic['mafia_percent'] = gp['mafia'] / gp['total_games'] * 100
+            dic['city_percent'] = gp['city'] / gp['total_games'] * 100
         return dic
 
     @classmethod
     def get_player(cls, player_id):
-        print("/")
         d = pd.read_csv("players.csv")
-        print(d)
-        print("/")
         if d[d.player == player_id].reset_index().size == 0:
             return None
         pl = dict(d[d.player == player_id].reset_index().iloc[0])
-        print("/")
         dic = {
             'player': pl['player'],
             'mafia_win': pl['mafia_win'],
             'city_win': pl['city_win'],
             'mafia_lose': pl['mafia_lose'],
             'city_lose': pl['city_lose'],
-            'city_total': pl['city_lose'] + pl['city_win'],
-            'mafia_total': pl['mafia_lose'] + pl['mafia_win'],
             'total_games': pl['total_games'],
             'lang': pl['lang']
         }
-        print("/")
         if pl['total_games'] == 0:
-            dic["mafia_win_percent"] = 0
-            dic["city_win_percent"] = 0
             dic["win_percent"] = 0
-            dic['city_total'] = 0
-            dic['mafia_total'] = 0
-
         else:
-            dic['mafia_win_percent'] = pl['mafia_win'] / (pl['mafia_win'] + pl["mafia_lose"])
-            dic['city_win_percent'] = pl['city_win'] / (pl['city_win'] + pl["city_lose"])
-            dic["win_percent"] = (pl['mafia_win'] + pl['city_win']) / pl["total_games"]
-        print("/")
+            dic["win_percent"] = (
+                pl['mafia_win'] + pl['city_win']) / pl["total_games"] * 100
+        if pl['mafia_win'] + pl["mafia_lose"] == 0:
+            dic["mafia_win_percent"] = 0
+        else:
+            dic['mafia_win_percent'] = pl['mafia_win'] / \
+                (pl['mafia_win'] + pl["mafia_lose"]) * 100
+        if pl['city_win'] + pl["city_lose"] == 0:
+            dic["city_win_percent"] = 0
+        else:
+            dic['city_win_percent'] = pl['city_win'] / \
+                (pl['city_win'] + pl["city_lose"]) * 100
         return dic
 
 
@@ -218,8 +209,9 @@ p = pd.DataFrame({
     'lang': [],
 })
 
-# p.to_csv("players.csv", index=False)
-# g.to_csv("groups.csv", index=False)
+if __name__ == "__main__":
+    p.to_csv("players.csv", index=False)
+    g.to_csv("groups.csv", index=False)
 
 # p = pd.read_csv("players.csv")
 # g = pd.read_csv("groups.csv")

@@ -1,26 +1,12 @@
 from DataManager import Database, Mode
 
 
-def get_database(update, context):
+def get_database(update, context, is_player=False):
     dic = {}
-    if update.message.from_user.id == update.effective_chat.id:
-        print("get database")
+    if update.message.from_user.id == update.effective_chat.id or is_player:
         dic = Database.do(Mode.get_player, update.message.from_user.id)
-        print("get database")
-        # if dic is None:
-        #     print("get database")
-        #     Database.do(Mode.players_language,
-        #                 update.message.from_user.id, context.user_data["lang"])
-        #     print("get database")
-        #     dic = Database.do(Mode.get_player, update.message.from_user.id)
-        #     print("get database")
     else:
         dic = Database.do(Mode.get_group, update.effective_chat.id)
-        # if dic is None:
-        #     Database.do(Mode.group_language,
-        #                 update.effective_chat.id, 'en')
-        #     dic = Database.do(Mode.get_group, update.effective_chat.id)
-    print("get database")
     return dic
 
 

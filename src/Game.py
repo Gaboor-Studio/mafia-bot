@@ -11,7 +11,7 @@ import traceback
 from LangUtils import get_data, get_lang
 import os
 import codecs
-from DataManager import Database
+from DataManager import Database, Mode
 
 
 class GameState(enum.Enum):
@@ -45,14 +45,15 @@ class Game(threading.Thread):
                          "Detective": None, "Doctor": None, "Sniper": None}
         self.sniper_shots = 0
         self.day_night_counter = 0
+        self.edit_vote = True
         self.situation_announce_votes = []
         self.situation_announce = 0
 
     def run(self):
         try:
             language = self.group_data["lang"]
-            t = 150
-            for i in range(4):
+            t = 60
+            for i in range(1):
                 time.sleep(30)
                 t -= 30
                 with codecs.open(os.path.join("Lang", language, f'{t}sec'), 'r', encoding='utf8') as file:
@@ -343,11 +344,14 @@ class Game(threading.Thread):
                             ["آره", "نه"],
                             self.group_chat_id, "day")
                 text = f"نتیجه ی رای گیری برای کشتن {player.get_markdown_call()}:  \n\nآره: "
+            self.edit_vote = True
             poll_message = poll.send_poll(self.context)
             with codecs.open(os.path.join("Lang", language, "VoteTime"), 'r', encoding='utf8') as file:
                 time_message = self.context.bot.send_message(
                     chat_id=self.group_chat_id, text=file.read())
-            time.sleep(15)
+            time.sleep(14)
+            self.edit_vote = False
+            time.sleep(1)
             for user_id, status in self.voters.items():
                 if status == "YES":
                     self.day_votes[player.user_id].append(user_id)
@@ -422,8 +426,6 @@ class Game(threading.Thread):
                 self.context.bot.send_message(
                     chat_id=self.group_chat_id,
                     text="You have " + str(self.situation_announce) + " announce(s) left. use it well ")
-
-
 
         else:
             self.context.bot.send_message(
@@ -693,12 +695,43 @@ class Game(threading.Thread):
         for player in self.players:
             if player.mafia_rank == 0:
                 text = text + "🙂 " + player.get_markdown_call() + " " + player.role.name + \
-                       player.emoji + "\n"
+                    player.emoji + "\n"
             else:
                 text = text + "😈 " + player.get_markdown_call() + " " + player.role.name + \
-                       player.emoji + "\n"
+                    player.emoji + "\n"
         self.context.bot.send_message(
             chat_id=self.group_chat_id, text=text, parse_mode="Markdown")
+
+    def update_players_dict(self, result):
+        for player in self.players:
+            data = player.user_data
+            data["total_games"] += 1
+            if (player.role == Roles.Mafia or player.role == Roles.GodFather) and (result == "mafia"):
+                data["mafia_win"] += 1
+            elif (player.role == Roles.Mafia or player.role == Roles.GodFather) and (result == "city"):
+                data["mafia_lose"] += 1
+            elif (player.role != Roles.Mafia and player.role != Roles.GodFather) and (result == "mafia"):
+                data["city_lose"] += 1
+            else:
+                data["city_win"] += 1
+            if data['mafia_win'] + data["mafia_lose"] != 0:
+                data['mafia_win_percent'] = data['mafia_win'] / \
+                    (data['mafia_win'] + data["mafia_lose"]) * 100
+            if data['city_win'] + data["city_lose"] != 0:
+                data['city_win_percent'] = data['city_win'] / \
+                    (data['city_win'] + data["city_lose"]) * 100
+            data["win_percent"] = (data['mafia_win'] +
+                                   data['city_win']) / data["total_games"] * 100
+
+    def update_group_dict(self, result):
+        data = self.group_data
+        data["total_games"] += 1
+        if result == "mafia":
+            data["mafia"] += 1
+        else:
+            data["city"] += 1
+        data['mafia_percent'] = data["mafia"]/data["total_games"] * 100
+        data['city_percent'] = data["city"] / data["total_games"] * 100
 
     def result_game(self):
         mafias = 0
@@ -720,7 +753,11 @@ class Game(threading.Thread):
                     self.context.bot.send_message(
                         chat_id=self.group_chat_id, text=file.read())
                 self.print_roles()
-            Database.update_players_stats(player_list=self.players, result="mafia")
+            self.update_group_dict("mafia")
+            self.update_players_dict("mafia")
+            Database.do(Mode.players_stats, self.players, "mafia")
+            Database.do(Mode.group_stats, self.group_chat_id, "mafia")
+            # Database.update_players_stats(player_list=self.players, result="mafia")
             return False
         elif mafias == 0:
             language = self.group_data["lang"]
@@ -734,7 +771,11 @@ class Game(threading.Thread):
                     self.context.bot.send_message(
                         chat_id=self.group_chat_id, text=file.read())
                 self.print_roles()
-            Database.update_players_stats(player_list=self.players, result="city")
+            self.update_players_dict("city")
+            self.update_group_dict("city")
+            Database.do(Mode.players_stats, self.players, "city")
+            Database.do(Mode.group_stats, self.group_chat_id, "city")
+            # Database.update_players_stats(player_list=self.players, result="city")
             return False
         return True
 

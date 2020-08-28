@@ -15,7 +15,7 @@ import os
 from DataManager import Database, Mode
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
-TOKEN = '1349950692:AAEFKKispr2bS_mpTQXJRoAmFO656Wf12tE'
+TOKEN = '404 Not Found'
 
 # TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
@@ -85,10 +85,22 @@ def just_for_pv(func):
 def fill_data(func):
     def wrapper_func(update, context):
         if context.user_data == {}:
-            for key, value in get_database(update, context).items():
-                context.user_data[key] = value
-            context.user_data["lang_message"] = []
+            dic = get_database(update, context, True)
+            if dic != None:
+                for key, value in dic.items():
+                    context.user_data[key] = value
+            else:
+                context.user_data["total_games"] = 0
+                context.user_data["mafia_win"] = 0
+                context.user_data["mafia_lose"] = 0
+                context.user_data["city_win"] = 0
+                context.user_data["city_lose"] = 0
+                context.user_data["mafia_win_percent"] = 0
+                context.user_data["city_win_percent"] = 0
+                context.user_data["win_percent"] = 0
             context.user_data["state"] = None
+            context.user_data["lang"] = 'en'
+            context.user_data["lang_message"] = []
         if update.message.from_user.id != update.effective_chat.id:
             if context.chat_data == {}:
                 for key, value in get_database(update, context).items():
@@ -127,22 +139,11 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
             update.message.reply_text(file.read())
 
 
+@fill_data
 @just_for_pv
 def start(update: telegram.Update, context: telegram.ext.CallbackContext):
-    print("start")
-    context.user_data["state"] = None
-    context.user_data["lang"] = 'en'
-    context.user_data["lang_message"] = []
-    context.user_data["total_games"] = 0
-    context.user_data["mafia_win"] = 0
-    context.user_data["mafia_lose"] = 0
-    context.user_data["city_win"] = 0
-    context.user_data["city_lose"] = 0
-    print("start")
     t = threading.Thread(target=set_lang, args=(update, context))
-    print("start")
     t.start()
-    print("start")
     with codecs.open(os.path.join("Lang", "en", "Start"), 'r', encoding='utf8') as file:
         update.message.reply_text(file.read())
 
@@ -223,7 +224,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
         language = context.chat_data["lang"]
         vote = query.data
         if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat'][
-            'id'] == game.group_chat_id:
+                'id'] == game.group_chat_id:
             if vote == "YES" or vote == "آره":
                 game.voters[query.from_user['id']] = "YES"
             else:
@@ -241,19 +242,20 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
                     [InlineKeyboardButton("آره", callback_data="آره")])
                 keyboard.append(
                     [InlineKeyboardButton("نه", callback_data="نه")])
-            text = query.message.text_markdown
-            lines = text.splitlines(True)
-            text = lines[0] + lines[1]
-            if text[-1] == '\n':
-                text = text[:-1]
-            for user_id in game.voters.keys():
-                p = game.get_player_by_id(user_id)
-                text += "  \n" + p.get_markdown_call()
-            query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(
-                keyboard), parse_mode="Markdown")
+            if game.edit_vote:
+                text = query.message.text_markdown
+                lines = text.splitlines(True)
+                text = lines[0] + lines[1]
+                if text[-1] == '\n':
+                    text = text[:-1]
+                for user_id in game.voters.keys():
+                    p = game.get_player_by_id(user_id)
+                    text += "  \n" + p.get_markdown_call()
+                query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(
+                    keyboard), parse_mode="Markdown")
 
     elif game.state == GameState.Night:
-        language = context.user_data['active_game'].group_data
+        language = context.user_data['active_game'].group_data["lang"]
         query.answer()
         vote = query.data
         player = game.get_player_by_id(query.from_user['id'])
@@ -285,15 +287,10 @@ def help_me(update, context):
 @admin_permission
 def lang(update, context):
     dic = get_data(update, context)
-    print(dic)
-    print("lang")
     dic["state"] = "lang"
-    print("lang")
     keyboard = ReplyKeyboardMarkup(
         [["English", "فارسی"]], resize_keyboard=True, one_time_keyboard=True)
-    print("lang")
     language = dic["lang"]
-    print("lang")
     with codecs.open(os.path.join("Lang", language, "ChooseLang"), 'r', encoding='utf8') as file:
         message = context.bot.send_message(chat_id=update.message.chat_id, text=file.read(
         ), parse_mode="Markdown", reply_markup=keyboard)
@@ -304,19 +301,14 @@ def lang(update, context):
 def text_handler(update, context):
     dic = get_data(update, context)
     if dic["state"] == "lang":
-        print("Test handler")
         if update.effective_message.text == "English":
             dic["lang"] = "en"
         else:
             dic["lang"] = "fa"
-        print("Test handler")
         set_lang(update, context)
-        print("Test handler")
         for message in dic["lang_message"]:
             message.delete()
-        print("Test handler")
         dic["lang_message"] = []
-        print("Test handler")
         with codecs.open(os.path.join("Lang", dic["lang"], "ChangeLang"), 'r', encoding='utf8') as file:
             context.bot.send_message(
                 chat_id=update.effective_chat.id, text=file.read(), parse_mode="Markdown",
@@ -327,50 +319,52 @@ def text_handler(update, context):
 def new_member(update, context):
     for member in update.message.new_chat_members:
         if member.id == context.bot.id:
-            print("added")
             if get_database(update, context) is None:
-                print("1")
                 context.chat_data["state"] = None
                 context.chat_data["lang"] = 'en'
                 context.chat_data["lang_message"] = []
                 context.chat_data["total_games"] = 0
                 context.chat_data["mafia"] = 0
                 context.chat_data["city"] = 0
+                context.chat_data['mafia_percent'] = 0
+                context.chat_data['city_percent'] = 0
                 set_lang(update, context)
             else:
-                print("2")
                 for key, value in get_database(update, context).items():
                     context.chat_data[key] = value
                 context.chat_data["lang_message"] = []
                 context.chat_data["state"] = None
 
-            print(context.chat_data)
-            print("done")
-
 
 @fill_data
 def stats(update: telegram.Update, context: telegram.ext.CallbackContext):
+    lang = get_lang(update, context)
     user = update.message.from_user
     player_data = context.user_data
     user_id = user["id"]
-    user_name = user["first_name"] + " " + user["last_name"]
+    user_name = user.full_name
     mark_down = f"[{user_name}](tg://user?id={str(user_id)})"
+    city_total = player_data["city_win"] + player_data["city_lose"]
+    mafia_total = player_data["mafia_win"] + player_data["mafia_lose"]
     text = ""
-    text = text + mark_down + " Played " + str(player_data.get(
-        "total_games")) + " times\nWin rate: " + str(player_data.get("win_percent")) + "\nCity: " + str(
-        player_data.get('city_total')) + " Win rate: " + str(player_data.get('mafia_win_percent')) + "\nMafia:" + str(
-        player_data.get('mafia_total')) + " Win rate: " + str(player_data.get('mafia_win_percent'))
+    if lang == 'en':
+        text = f"Stats for {mark_down}:\nplayed: {player_data['total_games']} times\nWin rate: {int(player_data['win_percent'])}%\nCity: {city_total} Win rate: {int(player_data['city_win_percent'])}%\nMafia: {mafia_total} Win rate: {int(player_data['mafia_win_percent'])}%\n------------------------"
+    else:
+        text = f"آمار {mark_down} در بازی:\nبازی های انجام شده: {player_data['total_games']}\nدرصد برد: {int(player_data['win_percent'])}%\n\nدفعاتی که شهروند بوده: {city_total}\n درصد برد شهروندی: {int(player_data['city_win_percent'])}%\n\nدفعاتی که مافیا بوده: {mafia_total}\n درصد برد مافیایی: {int(player_data['mafia_win_percent'])}%\n------------------------"
     update.message.reply_markdown(text=text)
 
 
+@just_for_group
 @fill_data
 def group_stats(update: telegram.Update, context: telegram.ext.CallbackContext):
     group = context.chat_data
+    lang = group["lang"]
+    title = update.effective_chat['title']
     text = ""
-    text = " Played " + str(group.get(
-        "total_games")) + " times\nCity: " + str(
-        group.get('city')) + " win\nMafia:" + str(
-        group.get('mafia')) + " win"
+    if lang == 'en':
+        text = f"Stats for group {title}:\nTotal games: {group['total_games']}\nCity win: {group['city']}\nMafia win: {group['mafia']}"
+    else:
+        text = f"آمار گروه {title}:\nبازی های انجام شده: {group['total_games']}\nتعداد برد شهر: {group['city']}\nتعداد برد مافیا: {group['mafia']}"
     update.message.reply_markdown(text=text)
 
 
