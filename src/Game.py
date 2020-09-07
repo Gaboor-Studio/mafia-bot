@@ -11,6 +11,7 @@ import traceback
 from LangUtils import get_data, get_lang
 import os
 import codecs
+import math
 from DataManager import Database, Mode
 
 
@@ -94,7 +95,7 @@ class Game(threading.Thread):
         players = []
         num_of_alive_players = len(self.get_alive_players())
         for key, value in self.day_votes.items():
-            if len(value) >= (num_of_alive_players - 1) // 2:
+            if len(value) >= math.ceil(num_of_alive_players / 2):
                 players.append(self.get_player_by_id(key))
         return players
 
@@ -349,9 +350,9 @@ class Game(threading.Thread):
             with codecs.open(os.path.join("Lang", language, "VoteTime"), 'r', encoding='utf8') as file:
                 time_message = self.context.bot.send_message(
                     chat_id=self.group_chat_id, text=file.read())
-            time.sleep(14)
+            time.sleep(13)
             self.edit_vote = False
-            time.sleep(1)
+            time.sleep(2)
             for user_id, status in self.voters.items():
                 if status == "YES":
                     self.day_votes[player.user_id].append(user_id)
@@ -373,9 +374,11 @@ class Game(threading.Thread):
         language = self.group_data["lang"]
         poll = None
         text = ""
-        self.context.bot.send_message(
-            chat_id=self.group_chat_id,
-            text="You have " + str(self.situation_announce) + " announce(s) left. use it well ")
+        with codecs.open(os.path.join("Lang", language, "LeftAnnounce"), 'r', encoding='utf8') as file:
+            text = file.read()
+            text = text.replace('*', str(self.situation_announce), 1)
+            self.context.bot.send_message(
+                chat_id=self.group_chat_id, text=text)
 
         if language == 'en':
             poll = Poll("Vote to announce situation: " + "  \nVoters:" + "🙋‍♂️", ["YES", "NO"],
@@ -408,28 +411,35 @@ class Game(threading.Thread):
         time_message.delete()
         self.voters = {}
 
-        if len(self.situation_announce_votes) >= len(self.get_alive_players()) // 2:
+        if len(self.situation_announce_votes) > len(self.get_alive_players()) // 2:
 
             self.situation_announce = self.situation_announce - 1
 
             all_player = len(self.get_alive_players())
             city = len(self.get_citizens())
             mafia = all_player - city
+            text = ""
+            with codecs.open(os.path.join("Lang", language, "AnnounceSituation"), 'r', encoding='utf8') as file:
+                text = file.read()
+                text = text.replace('*', str(mafia), 1)
+                text = text.replace('*', str(city), 1)
             self.context.bot.send_message(
-                chat_id=self.group_chat_id,
-                text="In the game we have " + str(mafia) + " Mafia(s) and " + str(city) + " Citizen(s)")
+                chat_id=self.group_chat_id, text=text)
             if self.situation_announce == 0:
-                self.context.bot.send_message(
-                    chat_id=self.group_chat_id,
-                    text="It was the last announcement you had!")
+                with codecs.open(os.path.join("Lang", language, "LastAnnounce"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=self.group_chat_id, text=file.read())
             else:
-                self.context.bot.send_message(
-                    chat_id=self.group_chat_id,
-                    text="You have " + str(self.situation_announce) + " announce(s) left. use it well ")
+                with codecs.open(os.path.join("Lang", language, "LeftAnnounce"), 'r', encoding='utf8') as file:
+                    text = file.read()
+                    text = text.replace('*', str(self.situation_announce), 1)
+                    self.context.bot.send_message(
+                        chat_id=self.group_chat_id, text=text)
 
         else:
-            self.context.bot.send_message(
-                chat_id=self.group_chat_id, text="City didn't accept to announce the situation!")
+            with codecs.open(os.path.join("Lang", language, "AnnounceDidntAccept"), 'r', encoding='utf8') as file:
+                self.context.bot.send_message(
+                    chat_id=self.group_chat_id, text=file.read())
 
     def update_mafia_ranks(self, dead_mafia):
         language = self.group_data["lang"]
@@ -441,6 +451,8 @@ class Game(threading.Thread):
                         chat_id=p.user_id, text=file.read() + str(p.mafia_rank))
 
     def day(self):
+        self.context.bot.send_sticker(chat_id=self.group_chat_id,
+                                      sticker="CAACAgQAAxkBAAEBTvZfVoDnLCoHnmNokQ0xDu_r1L21JAACSwAD1ul3KzlRQvdVVv9-GwQ")
         language = self.group_data["lang"]
         self.state = GameState.Day
 
@@ -450,7 +462,7 @@ class Game(threading.Thread):
 
         for player in self.get_alive_players():
             player.talk(self.group_chat_id, self.context)
-            time.sleep(5)
+            time.sleep(10)
         if self.day_night_counter != 0:
             self.send_day_votes(self.get_alive_players())
             kill_players = self.find_votes_more_than_half()
@@ -549,7 +561,7 @@ class Game(threading.Thread):
             self.night_votes.update(
                 {"Doctor": self.get_alive_players()[r].user_id})
             self.messages.get("Doctor").edit_text(
-                text=f"{randomly_chosen} {self.get_citizens()[r].get_markdown_call()}", parse_mode="MarkDown")
+                text=f"{randomly_chosen} {self.get_alive_players()[r].get_markdown_call()}", parse_mode="MarkDown")
 
         if self.night_votes.get("Sniper") is None and sniper_player is not None and self.messages.get(
                 "Sniper") is not None:
@@ -562,7 +574,7 @@ class Game(threading.Thread):
             self.night_votes.update(
                 {"Detective": self.get_players_without_detect()[r].user_id})
             self.messages.get("Detective").edit_text(
-                text=f"{randomly_chosen} {self.get_citizens()[r].get_markdown_call()}", parse_mode="MarkDown")
+                text=f"{randomly_chosen} {self..get_players_without_detect()[r].get_markdown_call()}", parse_mode="MarkDown")
 
         if doctor_player is not None and str(self.night_votes.get("Mafia_shot")) == str(self.night_votes.get("Doctor")):
             mafia_kill = False
@@ -631,6 +643,8 @@ class Game(threading.Thread):
                          "Detective": None, "Doctor": None, "Sniper": None}
 
     def night(self):
+        self.context.bot.send_sticker(chat_id=self.group_chat_id,
+                                      sticker="CAACAgQAAxkBAAEBTvRfVoDkyT_4cuxWVkyG3sSE5YwMZwACTwAD1ul3K7fApYkW8UiOGwQ")
         language = self.group_data["lang"]
         self.state = GameState.Night
         if self.day_night_counter == 1 and len(self.mafias) > 1:
@@ -691,14 +705,15 @@ class Game(threading.Thread):
             self.night_result()
 
     def print_roles(self):
+        language = self.group_data["lang"]
         text = ""
         for player in self.players:
             if player.mafia_rank == 0:
-                text = text + "🙂 " + player.get_markdown_call() + " " + player.role.name + \
-                    player.emoji + "\n"
+                text += "🙂"
             else:
-                text = text + "😈 " + player.get_markdown_call() + " " + player.role.name + \
-                    player.emoji + "\n"
+                text += "😈"
+            with codecs.open(os.path.join("Lang", language, f"{player.role.name}Name"), 'r', encoding='utf8') as file:
+                text += player.get_markdown_call() + " " + file.read() + player.emoji + "\n"
         self.context.bot.send_message(
             chat_id=self.group_chat_id, text=text, parse_mode="Markdown")
 

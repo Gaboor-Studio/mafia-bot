@@ -15,7 +15,7 @@ import os
 from DataManager import Database, Mode
 
 # 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
-TOKEN = '404 Not Found'
+TOKEN = '1349950692:AAFEuIImiquJAIXVYNwlFrhsT5Cw1ChjipM'
 
 # TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
@@ -103,10 +103,22 @@ def fill_data(func):
             context.user_data["lang_message"] = []
         if update.message.from_user.id != update.effective_chat.id:
             if context.chat_data == {}:
-                for key, value in get_database(update, context).items():
-                    context.chat_data[key] = value
-                context.chat_data["lang_message"] = []
-                context.chat_data["state"] = None
+                dic = get_database(update, context)
+                if dic != None:
+                    for key, value in dic.items():
+                        context.chat_data[key] = value
+                    context.chat_data["lang_message"] = []
+                    context.chat_data["state"] = None
+                else:
+                    context.chat_data["state"] = None
+                    context.chat_data["lang"] = 'en'
+                    context.chat_data["lang_message"] = []
+                    context.chat_data["total_games"] = 0
+                    context.chat_data["mafia"] = 0
+                    context.chat_data["city"] = 0
+                    context.chat_data['mafia_percent'] = 0
+                    context.chat_data['city_percent'] = 0
+                    set_lang(update, context)
         func(update, context)
 
     return wrapper_func
