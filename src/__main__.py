@@ -14,10 +14,8 @@ from DataManager import Database
 import os
 from DataManager import Database, Mode
 
-# 1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4 Real Token
-TOKEN = '1349950692:AAFEuIImiquJAIXVYNwlFrhsT5Cw1ChjipM'
+TOKEN = 'Suck our dick !!!!!'
 
-# TOKEN = '1212931959:AAHH9ViQhhhVRJBsEs9EwBv2pfkg8BMDFS4'
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
 

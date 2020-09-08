@@ -283,7 +283,7 @@ class Game(threading.Thread):
         self.just_players.pop(r)
         # Bulletproof
         """change the number to 9"""
-        if len(self.players) > 3:
+        if len(self.players) > 9:
             r = random.randrange(0, len(self.just_players))
             self.just_players[r].role = Roles.Bulletproof
             self.just_players[r].emoji = "🛡‍"
@@ -454,6 +454,11 @@ class Game(threading.Thread):
         self.context.bot.send_sticker(chat_id=self.group_chat_id,
                                       sticker="CAACAgQAAxkBAAEBTvZfVoDnLCoHnmNokQ0xDu_r1L21JAACSwAD1ul3KzlRQvdVVv9-GwQ")
         language = self.group_data["lang"]
+        if language == "en":
+            self.context.bot.send_message(chat_id=self.group_chat_id, text="Day is started")
+        else:
+            self.context.bot.send_message(chat_id=self.group_chat_id, text="روز شروع شد!")
+
         self.state = GameState.Day
 
         # Situation announce
@@ -574,7 +579,8 @@ class Game(threading.Thread):
             self.night_votes.update(
                 {"Detective": self.get_players_without_detect()[r].user_id})
             self.messages.get("Detective").edit_text(
-                text=f"{randomly_chosen} {self..get_players_without_detect()[r].get_markdown_call()}", parse_mode="MarkDown")
+                text=f"{randomly_chosen} {self.get_players_without_detect()[r].get_markdown_call()}",
+                parse_mode="MarkDown")
 
         if doctor_player is not None and str(self.night_votes.get("Mafia_shot")) == str(self.night_votes.get("Doctor")):
             mafia_kill = False
@@ -731,10 +737,10 @@ class Game(threading.Thread):
                 data["city_win"] += 1
             if data['mafia_win'] + data["mafia_lose"] != 0:
                 data['mafia_win_percent'] = data['mafia_win'] / \
-                    (data['mafia_win'] + data["mafia_lose"]) * 100
+                                            (data['mafia_win'] + data["mafia_lose"]) * 100
             if data['city_win'] + data["city_lose"] != 0:
                 data['city_win_percent'] = data['city_win'] / \
-                    (data['city_win'] + data["city_lose"]) * 100
+                                           (data['city_win'] + data["city_lose"]) * 100
             data["win_percent"] = (data['mafia_win'] +
                                    data['city_win']) / data["total_games"] * 100
 
@@ -745,7 +751,7 @@ class Game(threading.Thread):
             data["mafia"] += 1
         else:
             data["city"] += 1
-        data['mafia_percent'] = data["mafia"]/data["total_games"] * 100
+        data['mafia_percent'] = data["mafia"] / data["total_games"] * 100
         data['city_percent'] = data["city"] / data["total_games"] * 100
 
     def result_game(self):
