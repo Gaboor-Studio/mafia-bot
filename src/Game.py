@@ -49,7 +49,7 @@ class Game(threading.Thread):
         self.edit_vote = True
         self.situation_announce_votes = []
         self.situation_announce = 0
-        self.force_start = 0
+        self.force_start = []
 
     def run(self):
         try:
@@ -57,10 +57,8 @@ class Game(threading.Thread):
             t = 120
             time_breaker = 0
             for i in range(22):
-                if self.force_start >= int(len(self.players) * 2 / 3) and len(self.players) > 2:
-                    break
-
-                else:
+                if len(self.force_start) < int(len(self.players) * 2 / 3) or len(
+                        self.players) < 3 or self.force_start < 3:
                     time.sleep(5)
                     t -= 5
                     time_breaker = time_breaker + 1
@@ -68,6 +66,8 @@ class Game(threading.Thread):
                         with codecs.open(os.path.join("Lang", language, f'{t}sec'), 'r', encoding='utf8') as file:
                             self.context.bot.send_message(
                                 chat_id=self.group_chat_id, text=file.read())
+                else:
+                    break
             self.start_game()
         except Exception as e:
             traceback.print_exc(e)
@@ -187,8 +187,29 @@ class Game(threading.Thread):
         language = self.group_data["lang"]
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
-                self.context.bot.send_message(chat_id=self.group_chat_id, text="Ok")
-                self.force_start = self.force_start + 1
+                if self.get_player_by_id(user.id) not in self.force_start:
+                    num_force = int(len(self.players) * 2 / 3)
+                    if num_force < 3:
+                        num_force = 3
+                    self.force_start.append(self.get_player_by_id(user.id))
+                    num_remain = num_force - len(self.force_start)
+                    if num_remain != 0:
+                        if language == "en":
+                            self.context.bot.send_message(chat_id=self.group_chat_id,
+                                                          text=str(
+                                                              num_remain) + " players remaining to request to start "
+                                                                            "the game")
+                        else:
+                            self.context.bot.send_message(chat_id=self.group_chat_id,
+                                                          text=str(num_remain) + " بازیکن مونده تا بازی شروع شه")
+                else:
+                    if language == "en":
+                        self.context.bot.send_message(chat_id=self.group_chat_id,
+                                                      text="You already requested to start the game ")
+                    else:
+                        self.context.bot.send_message(chat_id=self.group_chat_id,
+                                                      text="تو قبلا درخواست شروع بازی رو دادی")
+
             else:
                 with codecs.open(os.path.join("Lang", language, "NotInGame"), 'r', encoding='utf8') as file:
                     self.update.message.reply_text(file.read())

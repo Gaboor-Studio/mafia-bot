@@ -377,7 +377,7 @@ def group_stats(update: telegram.Update, context: telegram.ext.CallbackContext):
         text = f"آمار گروه {title}:\nبازی های انجام شده: {group['total_games']}\nتعداد برد شهر: {group['city']}\nتعداد برد مافیا: {group['mafia']}"
     update.message.reply_markdown(text=text)
 
-
+@fill_data
 @just_for_group
 def force_start(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
