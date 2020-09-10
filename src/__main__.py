@@ -202,7 +202,7 @@ def leave(update: telegram.Update, context: telegram.ext.CallbackContext):
     if "active_game" in group_data.keys():
         group_game = group_data["active_game"]
         if not group_game.is_started:
-            group_game.leave_game(user, user_data)
+            group_game.leave_game(update, user, user_data)
         else:
             with codecs.open(os.path.join("Lang", language, "HasStartedLeave"), 'r', encoding='utf8') as file:
                 update.message.reply_text(file.read())
@@ -377,6 +377,7 @@ def group_stats(update: telegram.Update, context: telegram.ext.CallbackContext):
         text = f"آمار گروه {title}:\nبازی های انجام شده: {group['total_games']}\nتعداد برد شهر: {group['city']}\nتعداد برد مافیا: {group['mafia']}"
     update.message.reply_markdown(text=text)
 
+
 @fill_data
 @just_for_group
 def force_start(update: telegram.Update, context: telegram.ext.CallbackContext):
@@ -387,7 +388,7 @@ def force_start(update: telegram.Update, context: telegram.ext.CallbackContext):
     if "active_game" in group_data.keys():
         group_game = group_data["active_game"]
         if not group_game.is_started:
-            group_game.force_start_game(user, user_data)
+            group_game.force_start_game(update, user, user_data)
         else:
             if language == "en":
                 update.message.reply_text("Game was started")

@@ -166,7 +166,7 @@ class Game(threading.Thread):
                 self.context.bot.send_message(
                     chat_id=user['id'], text=file.read())
 
-    def leave_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
+    def leave_game(self,update: telegram.Update ,user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
         language = self.group_data["lang"]
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
@@ -175,15 +175,15 @@ class Game(threading.Thread):
                 self.players.remove(player)
                 self.just_players.remove(player)
                 with codecs.open(os.path.join("Lang", language, "LeaveGame"), 'r', encoding='utf8') as file:
-                    self.update.message.reply_text(file.read())
+                    update.message.reply_text(file.read())
             else:
                 with codecs.open(os.path.join("Lang", language, "NotInGame"), 'r', encoding='utf8') as file:
-                    self.update.message.reply_text(file.read())
+                    update.message.reply_text(file.read())
         else:
             with codecs.open(os.path.join("Lang", language, "NotJoinedYet"), 'r', encoding='utf8') as file:
-                self.update.message.reply_text(file.read())
+                update.message.reply_text(file.read())
 
-    def force_start_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
+    def force_start_game(self,update: telegram.Update ,user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
         language = self.group_data["lang"]
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
@@ -204,18 +204,18 @@ class Game(threading.Thread):
                                                           text=str(num_remain) + " بازیکن مونده تا بازی شروع شه")
                 else:
                     if language == "en":
-                        self.context.bot.send_message(chat_id=self.group_chat_id,
+                        update.message.reply_text(chat_id=self.group_chat_id,
                                                       text="You already requested to start the game ")
                     else:
-                        self.context.bot.send_message(chat_id=self.group_chat_id,
+                        update.message.reply_text(chat_id=self.group_chat_id,
                                                       text="تو قبلا درخواست شروع بازی رو دادی")
 
             else:
                 with codecs.open(os.path.join("Lang", language, "NotInGame"), 'r', encoding='utf8') as file:
-                    self.update.message.reply_text(file.read())
+                    update.message.reply_text(file.read())
         else:
             with codecs.open(os.path.join("Lang", language, "NotJoinedYet"), 'r', encoding='utf8') as file:
-                self.update.message.reply_text(file.read())
+                update.message.reply_text(file.read())
 
     def get_alive_players(self):
         alive = []
