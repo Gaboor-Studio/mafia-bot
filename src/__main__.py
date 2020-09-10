@@ -14,7 +14,7 @@ from DataManager import Database
 import os
 from DataManager import Database, Mode
 
-TOKEN = 'Suck our dick !!!!!'
+TOKEN = '1349950692:AAHJRZxWcMG1dN3np7KD1ASA_6QAP9WkKHM'
 
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
@@ -234,7 +234,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
         language = context.chat_data["lang"]
         vote = query.data
         if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat'][
-                'id'] == game.group_chat_id:
+            'id'] == game.group_chat_id:
             if vote == "YES" or vote == "آره":
                 game.voters[query.from_user['id']] = "YES"
             else:
@@ -378,6 +378,27 @@ def group_stats(update: telegram.Update, context: telegram.ext.CallbackContext):
     update.message.reply_markdown(text=text)
 
 
+@just_for_group
+def force_start(update: telegram.Update, context: telegram.ext.CallbackContext):
+    user = update.message.from_user
+    group_data = context.chat_data
+    user_data = context.user_data
+    language = get_lang(update, context)
+    if "active_game" in group_data.keys():
+        group_game = group_data["active_game"]
+        if not group_game.is_started:
+            group_game.force_start_game(user, user_data)
+        else:
+            if language == "en":
+                update.message.reply_text("Game was started")
+            else:
+                update.message.reply_text("بازی آغاز شده است")
+
+    else:
+        with codecs.open(os.path.join("Lang", language, "NoGame"), 'r', encoding='utf8') as file:
+            update.message.reply_text(file.read())
+
+
 dispatcher = updater.dispatcher
 dispatcher.add_handler(CallbackQueryHandler(button))
 dispatcher.add_handler(CommandHandler("new", new_game))
@@ -387,6 +408,7 @@ dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler('join', join))
 dispatcher.add_handler(CommandHandler('leave', leave))
 dispatcher.add_handler(CommandHandler('lang', lang))
+dispatcher.add_handler(CommandHandler('force_start', force_start))
 dispatcher.add_handler(CommandHandler('stats', stats))
 # dispatcher.add_handler(CommandHandler('global_stats', global_stats))
 dispatcher.add_handler(CommandHandler('group_stats', group_stats))

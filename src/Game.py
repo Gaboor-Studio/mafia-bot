@@ -49,18 +49,25 @@ class Game(threading.Thread):
         self.edit_vote = True
         self.situation_announce_votes = []
         self.situation_announce = 0
+        self.force_start = 0
 
     def run(self):
         try:
             language = self.group_data["lang"]
-            t = 60
-            for i in range(1):
-                time.sleep(30)
-                t -= 30
-                with codecs.open(os.path.join("Lang", language, f'{t}sec'), 'r', encoding='utf8') as file:
-                    self.context.bot.send_message(
-                        chat_id=self.group_chat_id, text=file.read())
-            time.sleep(30)
+            t = 120
+            time_breaker = 0
+            for i in range(22):
+                if self.force_start >= int(len(self.players) * 2 / 3) and len(self.players) > 2:
+                    break
+
+                else:
+                    time.sleep(5)
+                    t -= 5
+                    time_breaker = time_breaker + 1
+                    if time_breaker % 6 == 0:
+                        with codecs.open(os.path.join("Lang", language, f'{t}sec'), 'r', encoding='utf8') as file:
+                            self.context.bot.send_message(
+                                chat_id=self.group_chat_id, text=file.read())
             self.start_game()
         except Exception as e:
             traceback.print_exc(e)
@@ -169,6 +176,19 @@ class Game(threading.Thread):
                 self.just_players.remove(player)
                 with codecs.open(os.path.join("Lang", language, "LeaveGame"), 'r', encoding='utf8') as file:
                     self.update.message.reply_text(file.read())
+            else:
+                with codecs.open(os.path.join("Lang", language, "NotInGame"), 'r', encoding='utf8') as file:
+                    self.update.message.reply_text(file.read())
+        else:
+            with codecs.open(os.path.join("Lang", language, "NotJoinedYet"), 'r', encoding='utf8') as file:
+                self.update.message.reply_text(file.read())
+
+    def force_start_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
+        language = self.group_data["lang"]
+        if "active_game" in user_data.keys():
+            if user_data["active_game"] == self:
+                self.context.bot.send_message(chat_id=self.group_chat_id, text="Ok")
+                self.force_start = self.force_start + 1
             else:
                 with codecs.open(os.path.join("Lang", language, "NotInGame"), 'r', encoding='utf8') as file:
                     self.update.message.reply_text(file.read())
