@@ -53,12 +53,12 @@ class Game(threading.Thread):
 
     def run(self):
         try:
-            language = self.group_data["lang"]
-            t = 120
+            t = 180
             time_breaker = 0
-            for i in range(22):
+            for i in range(33):
+                language = self.group_data["lang"]
                 if len(self.force_start) < int(len(self.players) * 2 / 3) or len(
-                        self.players) < 3 or self.force_start < 3:
+                        self.players) < 5 or len(self.force_start) < 5:
                     time.sleep(5)
                     t -= 5
                     time_breaker = time_breaker + 1
@@ -166,7 +166,8 @@ class Game(threading.Thread):
                 self.context.bot.send_message(
                     chat_id=user['id'], text=file.read())
 
-    def leave_game(self, update: telegram.Update, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
+    def leave_game(self, update: telegram.Update, user: telegram.User,
+                   user_data: telegram.ext.CallbackContext.user_data):
         language = self.group_data["lang"]
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
@@ -185,7 +186,8 @@ class Game(threading.Thread):
             with codecs.open(os.path.join("Lang", language, "NotJoinedYet"), 'r', encoding='utf8') as file:
                 update.message.reply_text(file.read())
 
-    def force_start_game(self, update: telegram.Update, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
+    def force_start_game(self, update: telegram.Update, user: telegram.User,
+                         user_data: telegram.ext.CallbackContext.user_data):
         language = self.group_data["lang"]
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
@@ -262,7 +264,7 @@ class Game(threading.Thread):
 
     def start_game(self):
         language = self.group_data["lang"]
-        if len(self.players) > 2:
+        if len(self.players) > 4:
             self.set_players_roles()
             with codecs.open(os.path.join("Lang", language, "GameStarted"), 'r', encoding='utf8') as file:
                 self.context.bot.send_message(
@@ -489,6 +491,16 @@ class Game(threading.Thread):
                     self.context.bot.send_message(
                         chat_id=p.user_id, text=file.read() + str(p.mafia_rank))
 
+    def send_day_list(self):
+        message = "Players:\n"
+        for player in self.get_alive_players():
+            message = message + "🙂 " + player.get_markdown_call() + " \n"
+        if len(self.players) > len(self.get_alive_players()):
+            for player in self.players:
+                if player not in self.get_alive_players():
+                    message = message + "💀 " + player.get_markdown_call() + " \n"
+        self.context.bot.send_message(chat_id=self.group_chat_id, text=message, parse_mode="MarkDown")
+
     def day(self):
         self.context.bot.send_sticker(chat_id=self.group_chat_id,
                                       sticker="CAACAgQAAxkBAAEBTvZfVoDnLCoHnmNokQ0xDu_r1L21JAACSwAD1ul3KzlRQvdVVv9-GwQ")
@@ -502,13 +514,15 @@ class Game(threading.Thread):
 
         self.state = GameState.Day
 
+        self.send_day_list()
+
         # Situation announce
         if self.day_night_counter > 2 and self.situation_announce > 0:
             self.situation_vote()
 
         for player in self.get_alive_players():
             player.talk(self.group_chat_id, self.context)
-            time.sleep(10)
+            time.sleep(45)
         if self.day_night_counter != 0:
             self.send_day_votes(self.get_alive_players())
             kill_players = self.find_votes_more_than_half()
@@ -778,10 +792,10 @@ class Game(threading.Thread):
                 data["city_win"] += 1
             if data['mafia_win'] + data["mafia_lose"] != 0:
                 data['mafia_win_percent'] = data['mafia_win'] / \
-                    (data['mafia_win'] + data["mafia_lose"]) * 100
+                                            (data['mafia_win'] + data["mafia_lose"]) * 100
             if data['city_win'] + data["city_lose"] != 0:
                 data['city_win_percent'] = data['city_win'] / \
-                    (data['city_win'] + data["city_lose"]) * 100
+                                           (data['city_win'] + data["city_lose"]) * 100
             data["win_percent"] = (data['mafia_win'] +
                                    data['city_win']) / data["total_games"] * 100
 

@@ -14,7 +14,7 @@ from DataManager import Database
 import os
 from DataManager import Database, Mode
 
-TOKEN = 'YNWA'
+TOKEN = 'Suck our dick'
 
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
