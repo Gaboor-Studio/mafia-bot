@@ -14,7 +14,7 @@ from DataManager import Database
 import os
 from DataManager import Database, Mode
 
-TOKEN = '1349950692:AAHJRZxWcMG1dN3np7KD1ASA_6QAP9WkKHM'
+TOKEN = 'YNWA'
 
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
@@ -97,7 +97,6 @@ def fill_data(func):
                 context.user_data["city_win_percent"] = 0
                 context.user_data["win_percent"] = 0
             context.user_data["state"] = None
-            context.user_data["lang"] = 'en'
             context.user_data["lang_message"] = []
         if update.message.from_user.id != update.effective_chat.id:
             if context.chat_data == {}:
@@ -152,6 +151,7 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
 @fill_data
 @just_for_pv
 def start(update: telegram.Update, context: telegram.ext.CallbackContext):
+    context.user_data["lang"] = 'en'
     t = threading.Thread(target=set_lang, args=(update, context))
     t.start()
     with codecs.open(os.path.join("Lang", "en", "Start"), 'r', encoding='utf8') as file:
@@ -234,7 +234,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
         language = context.chat_data["lang"]
         vote = query.data
         if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat'][
-            'id'] == game.group_chat_id:
+                'id'] == game.group_chat_id:
             if vote == "YES" or vote == "آره":
                 game.voters[query.from_user['id']] = "YES"
             else:
@@ -384,20 +384,74 @@ def force_start(update: telegram.Update, context: telegram.ext.CallbackContext):
     user = update.message.from_user
     group_data = context.chat_data
     user_data = context.user_data
-    language = get_lang(update, context)
+    language = group_data["lang"]
     if "active_game" in group_data.keys():
         group_game = group_data["active_game"]
         if not group_game.is_started:
             group_game.force_start_game(update, user, user_data)
         else:
-            if language == "en":
-                update.message.reply_text("Game was started")
-            else:
-                update.message.reply_text("بازی آغاز شده است")
+            with codecs.open(os.path.join("Lang", language, "AlreadyStarted"), 'r', encoding='utf8') as file:
+                update.message.reply_text(file.read())
 
     else:
         with codecs.open(os.path.join("Lang", language, "NoGame"), 'r', encoding='utf8') as file:
             update.message.reply_text(file.read())
+
+
+@fill_data
+@just_for_pv
+def godfather(update: telegram.Update, context: telegram.ext.CallbackContext):
+    language = context.user_data["lang"]
+    with codecs.open(os.path.join("Lang", language, "GodfatherHelp"), 'r', encoding='utf8') as file:
+        update.message.reply_text(text=file.read(), parse_mode="Markdown")
+
+
+@fill_data
+@just_for_pv
+def mafia(update: telegram.Update, context: telegram.ext.CallbackContext):
+    language = context.user_data["lang"]
+    with codecs.open(os.path.join("Lang", language, "MafiaHelp"), 'r', encoding='utf8') as file:
+        update.message.reply_text(text=file.read(), parse_mode="Markdown")
+
+
+@fill_data
+@just_for_pv
+def detcetive(update: telegram.Update, context: telegram.ext.CallbackContext):
+    language = context.user_data["lang"]
+    with codecs.open(os.path.join("Lang", language, "DetectiveHelp"), 'r', encoding='utf8') as file:
+        update.message.reply_text(text=file.read(), parse_mode="Markdown")
+
+
+@fill_data
+@just_for_pv
+def doctor(update: telegram.Update, context: telegram.ext.CallbackContext):
+    language = context.user_data["lang"]
+    with codecs.open(os.path.join("Lang", language, "DoctorHelp"), 'r', encoding='utf8') as file:
+        update.message.reply_text(text=file.read(), parse_mode="Markdown")
+
+
+@fill_data
+@just_for_pv
+def sniper(update: telegram.Update, context: telegram.ext.CallbackContext):
+    language = context.user_data["lang"]
+    with codecs.open(os.path.join("Lang", language, "SniperHelp"), 'r', encoding='utf8') as file:
+        update.message.reply_text(text=file.read(), parse_mode="Markdown")
+
+
+@fill_data
+@just_for_pv
+def Bulletproof(update: telegram.Update, context: telegram.ext.CallbackContext):
+    language = context.user_data["lang"]
+    with codecs.open(os.path.join("Lang", language, "BulletproofHelp"), 'r', encoding='utf8') as file:
+        update.message.reply_text(text=file.read(), parse_mode="Markdown")
+
+
+@fill_data
+@just_for_pv
+def citizen(update: telegram.Update, context: telegram.ext.CallbackContext):
+    language = context.user_data["lang"]
+    with codecs.open(os.path.join("Lang", language, "CitizenHelp"), 'r', encoding='utf8') as file:
+        update.message.reply_text(text=file.read(), parse_mode="Markdown")
 
 
 dispatcher = updater.dispatcher
@@ -411,6 +465,13 @@ dispatcher.add_handler(CommandHandler('leave', leave))
 dispatcher.add_handler(CommandHandler('lang', lang))
 dispatcher.add_handler(CommandHandler('force_start', force_start))
 dispatcher.add_handler(CommandHandler('stats', stats))
+dispatcher.add_handler(CommandHandler('Godfather', godfather))
+dispatcher.add_handler(CommandHandler('Mafia', mafia))
+dispatcher.add_handler(CommandHandler('Detective', detcetive))
+dispatcher.add_handler(CommandHandler('Doctor', doctor))
+dispatcher.add_handler(CommandHandler('Sniper', sniper))
+dispatcher.add_handler(CommandHandler('Bulletproof', Bulletproof))
+dispatcher.add_handler(CommandHandler('Citizen', citizen))
 # dispatcher.add_handler(CommandHandler('global_stats', global_stats))
 dispatcher.add_handler(CommandHandler('group_stats', group_stats))
 dispatcher.add_handler(MessageHandler(

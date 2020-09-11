@@ -10,11 +10,12 @@ You can read voting rules using this command:
 *Note:* At the first day of the game there is no voting at the end of the day and players only talk to each other.  
   
 *Night state:* At night, players do their job with respect to their role. You can read about the roles using the following commands:  
-/GodFather  
+/Godfather  
 /Mafia  
 /Detective  
 /Doctor  
-/Sniper  
+/Sniper
+/Bulletproof  
 /Citizen  
   
 *Note:* At the first night of the game, the bot only presents the mafia players to each other and there is no mafia shot or doctor save or any other proccess related to the roles.  

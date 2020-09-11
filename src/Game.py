@@ -166,12 +166,14 @@ class Game(threading.Thread):
                 self.context.bot.send_message(
                     chat_id=user['id'], text=file.read())
 
-    def leave_game(self,update: telegram.Update ,user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
+    def leave_game(self, update: telegram.Update, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
         language = self.group_data["lang"]
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
                 del user_data["active_game"]
                 player = self.get_player_by_id(user.id)
+                if player in self.force_start:
+                    self.force_start.remove(player)
                 self.players.remove(player)
                 self.just_players.remove(player)
                 with codecs.open(os.path.join("Lang", language, "LeaveGame"), 'r', encoding='utf8') as file:
@@ -183,33 +185,29 @@ class Game(threading.Thread):
             with codecs.open(os.path.join("Lang", language, "NotJoinedYet"), 'r', encoding='utf8') as file:
                 update.message.reply_text(file.read())
 
-    def force_start_game(self,update: telegram.Update ,user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
+    def force_start_game(self, update: telegram.Update, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
         language = self.group_data["lang"]
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
-                if self.get_player_by_id(user.id) not in self.force_start:
+                player = self.get_player_by_id(user.id)
+                if player not in self.force_start:
                     num_force = int(len(self.players) * 2 / 3)
-                    if num_force < 3:
-                        num_force = 3
+                    if num_force < 5:
+                        num_force = 5
                     self.force_start.append(self.get_player_by_id(user.id))
-                    num_remain = num_force - len(self.force_start)
-                    if num_remain != 0:
-                        if language == "en":
-                            self.context.bot.send_message(chat_id=self.group_chat_id,
-                                                          text=str(
-                                                              num_remain) + " players remaining to request to start "
-                                                                            "the game")
-                        else:
-                            self.context.bot.send_message(chat_id=self.group_chat_id,
-                                                          text=str(num_remain) + " بازیکن مونده تا بازی شروع شه")
+                    with codecs.open(os.path.join("Lang", language, "RemainingPlayers"), 'r', encoding='utf8') as file:
+                        text = file.read()
+                        text = text.replace('$', player.get_markdown_call(), 1)
+                        text = text.replace(
+                            '$', f"*{str(len(self.force_start))}*", 1)
+                        text = text.replace('$', f"*{str(num_force)}*", 1)
+                        self.context.bot.send_message(
+                            chat_id=self.group_chat_id, text=text, parse_mode="Markdown")
                 else:
-                    if language == "en":
-                        update.message.reply_text(chat_id=self.group_chat_id,
-                                                      text="You already requested to start the game ")
-                    else:
-                        update.message.reply_text(chat_id=self.group_chat_id,
-                                                      text="تو قبلا درخواست شروع بازی رو دادی")
-
+                    print(".")
+                    with codecs.open(os.path.join("Lang", language, "AlreadyForceStop"), 'r', encoding='utf8') as file:
+                        print(".")
+                        update.message.reply_text(file.read())
             else:
                 with codecs.open(os.path.join("Lang", language, "NotInGame"), 'r', encoding='utf8') as file:
                     update.message.reply_text(file.read())
@@ -496,9 +494,11 @@ class Game(threading.Thread):
                                       sticker="CAACAgQAAxkBAAEBTvZfVoDnLCoHnmNokQ0xDu_r1L21JAACSwAD1ul3KzlRQvdVVv9-GwQ")
         language = self.group_data["lang"]
         if language == "en":
-            self.context.bot.send_message(chat_id=self.group_chat_id, text="Day is started")
+            self.context.bot.send_message(
+                chat_id=self.group_chat_id, text="Day is started")
         else:
-            self.context.bot.send_message(chat_id=self.group_chat_id, text="روز شروع شد!")
+            self.context.bot.send_message(
+                chat_id=self.group_chat_id, text="روز شروع شد!")
 
         self.state = GameState.Day
 
@@ -778,10 +778,10 @@ class Game(threading.Thread):
                 data["city_win"] += 1
             if data['mafia_win'] + data["mafia_lose"] != 0:
                 data['mafia_win_percent'] = data['mafia_win'] / \
-                                            (data['mafia_win'] + data["mafia_lose"]) * 100
+                    (data['mafia_win'] + data["mafia_lose"]) * 100
             if data['city_win'] + data["city_lose"] != 0:
                 data['city_win_percent'] = data['city_win'] / \
-                                           (data['city_win'] + data["city_lose"]) * 100
+                    (data['city_win'] + data["city_lose"]) * 100
             data["win_percent"] = (data['mafia_win'] +
                                    data['city_win']) / data["total_games"] * 100
 
