@@ -56,6 +56,8 @@ class Game(threading.Thread):
             t = 180
             time_breaker = 0
             for i in range(33):
+                if self.is_finished:
+                    break
                 language = self.group_data["lang"]
                 if len(self.force_start) < int(len(self.players) * 2 / 3) or len(
                         self.players) < 5 or len(self.force_start) < 5:
@@ -68,7 +70,8 @@ class Game(threading.Thread):
                                 chat_id=self.group_chat_id, text=file.read())
                 else:
                     break
-            self.start_game()
+            if not self.is_finished:
+                self.start_game()
         except Exception as e:
             traceback.print_exc(e)
         finally:
@@ -285,6 +288,7 @@ class Game(threading.Thread):
             del player.user_data["active_game"]
         del self.group_data["active_game"]
         self.raise_exception()
+        self.is_finished = True
 
     def set_players_roles(self):
         mafia_number = 0
@@ -714,6 +718,8 @@ class Game(threading.Thread):
                     chat_id=self.group_chat_id, text=file.read())
             self.notify_mafias()
             for i in range(2):
+                if self.is_finished:
+                    break
                 with codecs.open(os.path.join("Lang", language, f"Night{30 - i * 15}sec"), 'r',
                                  encoding='utf8') as file:
                     self.context.bot.send_message(

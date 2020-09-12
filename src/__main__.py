@@ -14,7 +14,7 @@ from DataManager import Database
 import os
 from DataManager import Database, Mode
 
-TOKEN = 'Suck our dick'
+TOKEN = 'Suck our dick!!!!'
 
 updater = Updater(token=TOKEN, use_context=True)
 bot = telegram.Bot(TOKEN)
@@ -131,15 +131,23 @@ def new_game(update: telegram.Update, context: telegram.ext.CallbackContext):
     language = get_lang(update, context)
     if "active_game" not in group_data.keys():
         if has_subscribed(update, context):
-            game = Game(group_id, group_data, context, update)
-            group_data["active_game"] = game
-            game.start()
-            context.bot.send_sticker(chat_id=game.group_chat_id,
-                                     sticker="CAACAgQAAxkBAAEBEGZfEajfE4ubecspTvk_h_MmLWldhwACFwAD1ul3K_CgFM5dUHoRGgQ")
+            if "active_game" not in user_data.keys():
+                game = Game(group_id, group_data, context, update)
+                group_data["active_game"] = game
+                game.start()
+                context.bot.send_sticker(chat_id=game.group_chat_id,
+                                         sticker="CAACAgQAAxkBAAEBEGZfEajfE4ubecspTvk_h_MmLWldhwACFwAD1ul3K_CgFM5dUHoRGgQ")
 
-            with codecs.open(os.path.join("Lang", language, "NewGame"), 'r', encoding='utf8') as file:
-                update.message.reply_text(file.read())
-            game.join_game(user, user_data)
+                with codecs.open(os.path.join("Lang", language, "NewGame"), 'r', encoding='utf8') as file:
+                    update.message.reply_text(file.read())
+                game.join_game(user, user_data)
+            else:
+                with codecs.open(os.path.join("Lang", language, "AlreadyJoinedAnotherGroup"), 'r',
+                                 encoding='utf8') as file:
+                    update.message.reply_markdown(file.read())
+                    context.bot.send_message(
+                        chat_id=user['id'], text=file.read())
+
         else:
             with codecs.open(os.path.join("Lang", language, "StartPV"), 'r', encoding='utf8') as file:
                 update.message.reply_text(file.read())
@@ -234,7 +242,7 @@ def button(update: telegram.Update, context: telegram.ext.CallbackContext):
         language = context.chat_data["lang"]
         vote = query.data
         if game.get_player_by_id(query.from_user['id']) != None and query['message']['chat'][
-                'id'] == game.group_chat_id:
+            'id'] == game.group_chat_id:
             if vote == "YES" or vote == "آره":
                 game.voters[query.from_user['id']] = "YES"
             else:
