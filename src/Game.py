@@ -50,6 +50,7 @@ class Game(threading.Thread):
         self.situation_announce_votes = []
         self.situation_announce = 0
         self.force_start = []
+        self.is_join = True
 
     def run(self):
         try:
@@ -71,6 +72,8 @@ class Game(threading.Thread):
                 else:
                     break
             if not self.is_finished:
+                self.is_join = False
+                time.sleep(5)
                 self.start_game()
         except Exception as e:
             traceback.print_exc(e)
@@ -151,18 +154,19 @@ class Game(threading.Thread):
     def join_game(self, user: telegram.User, user_data: telegram.ext.CallbackContext.user_data):
         language = self.group_data["lang"]
         if not self.is_started:
-            user_data["active_game"] = self
-            player = Player(user.full_name, user.username,
-                            user.id, user_data, self)
-            self.players.append(player)
-            self.just_players.append(player)
-            with codecs.open(os.path.join("Lang", language, "CurrentPlayers"), 'r', encoding='utf8') as file:
-                self.update.message.reply_markdown(
-                    file.read() + "  \n" + self.get_list())
+            if self.is_join:
+                user_data["active_game"] = self
+                player = Player(user.full_name, user.username,
+                                user.id, user_data, self)
+                self.players.append(player)
+                self.just_players.append(player)
+                with codecs.open(os.path.join("Lang", language, "CurrentPlayers"), 'r', encoding='utf8') as file:
+                    self.update.message.reply_markdown(
+                        file.read() + "  \n" + self.get_list())
 
-            with codecs.open(os.path.join("Lang", language, "SuccessfullyJoin"), 'r', encoding='utf8') as file:
-                self.context.bot.send_message(
-                    chat_id=user['id'], text=file.read())
+                with codecs.open(os.path.join("Lang", language, "SuccessfullyJoin"), 'r', encoding='utf8') as file:
+                    self.context.bot.send_message(
+                        chat_id=user['id'], text=file.read())
         else:
             with codecs.open(os.path.join("Lang", language, "HasStartedJoin"), 'r', encoding='utf8') as file:
                 self.update.message.reply_text(file.read())
@@ -174,14 +178,15 @@ class Game(threading.Thread):
         language = self.group_data["lang"]
         if "active_game" in user_data.keys():
             if user_data["active_game"] == self:
-                del user_data["active_game"]
-                player = self.get_player_by_id(user.id)
-                if player in self.force_start:
-                    self.force_start.remove(player)
-                self.players.remove(player)
-                self.just_players.remove(player)
-                with codecs.open(os.path.join("Lang", language, "LeaveGame"), 'r', encoding='utf8') as file:
-                    update.message.reply_text(file.read())
+                if self.is_join:
+                    del user_data["active_game"]
+                    player = self.get_player_by_id(user.id)
+                    if player in self.force_start:
+                        self.force_start.remove(player)
+                    self.players.remove(player)
+                    self.just_players.remove(player)
+                    with codecs.open(os.path.join("Lang", language, "LeaveGame"), 'r', encoding='utf8') as file:
+                        update.message.reply_text(file.read())
             else:
                 with codecs.open(os.path.join("Lang", language, "NotInGame"), 'r', encoding='utf8') as file:
                     update.message.reply_text(file.read())
@@ -544,7 +549,7 @@ class Game(threading.Thread):
             self.reset_info()
             for player in kill_players:
                 player.talk(self.group_chat_id, self.context)
-                time.sleep(5)
+                time.sleep(15)
             if len(kill_players) >= 1:
                 self.send_day_votes(kill_players)
                 final_kill = self.find_votes_more_than_half()
@@ -568,7 +573,7 @@ class Game(threading.Thread):
                             ) + file.read(), parse_mode="Markdown")
                         if player.role == Roles.Mafia or player.role == Roles.GodFather:
                             self.update_mafia_ranks(player)
-                        time.sleep(5)
+                        time.sleep(15)
                         player.is_alive = False
                 else:
                     players = self.find_player_with_most_vote()
@@ -586,7 +591,7 @@ class Game(threading.Thread):
                             with codecs.open(os.path.join("Lang", language, "FinalWill"), 'r', encoding='utf8') as file:
                                 self.context.bot.send_message(chat_id=self.group_chat_id, text=player.get_markdown_call(
                                 ) + file.read(), parse_mode="Markdown")
-                            time.sleep(5)
+                            time.sleep(15)
                             player.is_alive = False
                             if player.role == Roles.Mafia or player.role == Roles.GodFather:
                                 self.update_mafia_ranks(player)
@@ -600,7 +605,7 @@ class Game(threading.Thread):
                 with codecs.open(os.path.join("Lang", language, "NobodyDeadHalf"), 'r', encoding='utf8') as file:
                     self.context.bot.send_message(
                         chat_id=self.group_chat_id, text=file.read())
-                time.sleep(5)
+                time.sleep(15)
             self.reset_info()
 
     def night_result(self):
